@@ -9,8 +9,11 @@
 
     int line_num = 0;
     int comment_num = 0;
+	int aftercomment = 0;
 
 %}
+
+%x inccomment
 
 /* Define regular expression label */
 letter [a-zA-Z_]
@@ -19,7 +22,9 @@ id {letter}+({letter}|{digit})*
 inumber {digit}+
 fnumber ({digit}*\.{digit}+)
 string \"({letter}|\s|\t|\n)*\"
-ccomment \/\*(\*[^\/]|[^*])*\*\/
+ccommentstart \/\*
+ccommentmiddle (\*[^\n\/]|[^*\n])*\n
+ccommentend (\*[^\n\/]|[^*\n])*\*\/
 cppcomment \/\/([^\n])*\n
 
 /* Rules section */
@@ -35,7 +40,8 @@ cppcomment \/\/([^\n])*\n
 ";"		    { printf("%-8s \t %s\n", yytext, "SEMICOLON"); }
 ","		    { printf("%-8s \t %s\n", yytext, "COMMA"); }
 "\""	    { printf("%-8s \t %s\n", yytext, "QUOTA"); }
-"\n"	    { printf("%-8s \t %s\n", "", "NEWLINE"); line_num++; }
+"\n"	    { printf("%-8s \t %s\n", "", "NEWLINE"); line_num++;
+			  if (aftercomment) { comment_num++; aftercomment = 0; } }
 
 "+"         { printf("%-8s \t %s\n", yytext, "ADD"); }
 "-"         { printf("%-8s \t %s\n", yytext, "SUB"); }
@@ -89,23 +95,20 @@ cppcomment \/\/([^\n])*\n
 			  printf("%-8s \t %s\n", "\"", "QUOTA");
 			  printf("%-8s \t %s\n", str, "STRING"); // will be modified in hw2
 			  printf("%-8s \t %s\n", "\"", "QUOTA"); }
-{ccomment}	{ char *str = (char *)malloc(strlen(yytext) * sizeof(char));
-			  char *substr = (char *)malloc(strlen(yytext) * sizeof(char));
-			  strcpy(str, yytext);
-			  substr = strtok(str, "\n");
-			  while (substr != NULL) {
-				  comment_num++;
-			  	  char *temp = (char *)malloc(strlen(substr) * sizeof(char));
-				  strcpy(temp, substr);
-				  substr = strtok(NULL, "\n");
-				  if (substr != NULL) {
-				  	  line_num++;
-				  	  printf("%s", temp);
-					  printf("%-8s \t %s\n", "\n",  "C Comment");
-				  } else {
-				      printf("%-8s \t %s\n", temp, "C Comment");
-				  }
-			  } }
+
+{ccommentstart}					{ BEGIN(inccomment); printf("%s", yytext);}
+<inccomment>{ccommentmiddle}	{ char *str = (char *)malloc(strlen(yytext) * sizeof(char));
+								  strncpy(str, yytext, strlen(yytext)-1);
+								  printf("%s", str);
+								  printf("%-8s \t %s\n", "\n", "C Comment");
+								  comment_num++; line_num++; }
+<inccomment>{ccommentend}		{ char *str = (char *)malloc(strlen(yytext) * sizeof(char));
+								  strncpy(str, yytext, strlen(yytext)-2);
+								  printf("%s", str);
+								  printf("%-8s \t %s\n", "*/", "C Comment");
+								  aftercomment = 1;
+								  BEGIN 0; }
+
 {cppcomment}	{ char *str = (char *)malloc(strlen(yytext) * sizeof(char));
 			  	  str = strtok(yytext, "\n");
 			  	  printf("%-8s \t %s\n", str, "C++ Comment");
@@ -113,7 +116,7 @@ cppcomment \/\/([^\n])*\n
 			  	  comment_num++;
 				  line_num++; }
 
-<<EOF>>     { line_num++; yyterminate(); }
+<<EOF>>     { if (aftercomment) comment_num++; line_num++; yyterminate(); }
 .           {;}
 
 %%
