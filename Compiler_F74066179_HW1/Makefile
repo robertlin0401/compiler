@@ -4,7 +4,7 @@ SRC := compiler_hw1.l
 TARGET := myscanner
 v := 0
 
-all: lex.yy.c ${TARGET}
+all: ${TARGET}
 
 ${TARGET}: lex.yy.c
 	@${CC} ${CFLAGS} -o $@ $<
