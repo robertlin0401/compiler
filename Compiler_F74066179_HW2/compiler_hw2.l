@@ -27,15 +27,9 @@ fnumber ({digit}*\.{digit}+)
 <CMT>\n     {;}
 <CMT>.      {;}
 "//".*      {;}
-"\""        { BEGIN(STR);
-                return '"';
-            }
-<STR>"\""   { BEGIN(INITIAL);
-                return '"';
-            }
-<STR>[^\"]* { yylval.s_val = strdup(yytext);
-                return STRING_LIT;
-            }
+"\""        { BEGIN(STR); return '"'; }
+<STR>"\""   { BEGIN(INITIAL); return '"'; }
+<STR>[^\"]* { yylval.s_val = strdup(yytext); return STRING_LIT; }
 "+"         { return '+'; }
 "-"         { return '-'; }
 "*"         { return '*'; }
@@ -83,15 +77,13 @@ fnumber ({digit}*\.{digit}+)
 "float32"   { return FLOAT;}
 "string"    { return STRING; }
 "bool"      { return BOOL; }
-"true"      {;}
-"false"     {;}
+"true"      { return TRUE; }
+"false"     { return FALSE; }
 "var"       { return VAR; }
 
-{inumber}   { yylval.i_val = atoi(yytext);
-                return INT_LIT;
-            }
-{fnumber}   { XXX; }
-{id}        { XXX; }
+{inumber}   { yylval.i_val = atoi(yytext); return INT_LIT; }
+{fnumber}   { yylval.f_val = atof(yytext); return FLOAT_LIT; }
+{id}		{ yylval.id = strdup(yytext); return IDENT; }
 
 <<EOF>>     { static int once = 0;
                 if (once++) {

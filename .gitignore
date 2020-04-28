@@ -2,5 +2,9 @@
 *.zip
 
 # build
+*/a.out
 */lex.yy.c
 */myscanner
+*/y.tab.*
+*/y.output
+*/myparser
