@@ -74,7 +74,7 @@
 /* Nonterminal with return, which need to sepcify type */
 %type <type> Type TypeName ArrayType
 %type <operator> UnaryOp LogicalOROp LogicalANDOp ComparisonOp AdditionOp MultiplicationOp AssignOp
-%type <type> Expression LogicalORExpr LogicalANDExpr ComparisonExpr AdditionExpr MultiplicationExpr UnaryExpr PrimaryExpr Operand Literal IndexExpr ConversionExpr
+%type <type> Expression LogicalORExpr LogicalANDExpr ComparisonExpr AdditionExpr MultiplicationExpr UnaryExpr PrimaryExpr Operand Literal IndexExpr
 
 /* Yacc will start at this nonterminal */
 %start Program
@@ -169,7 +169,7 @@ UnaryExpr
 PrimaryExpr
 	: Operand			{ $$ = $1; }
 	| IndexExpr			{ $$ = $1; }
-	| ConversionExpr	{ $$ = $1; }
+	| ConversionExpr
 ;
 Operand
 	: Literal				{ $$ = $1; }
@@ -177,7 +177,21 @@ Operand
 	| '(' Expression ')'	{ $$ = $2; }
 ;
 IndexExpr: PrimaryExpr '[' Expression ']' { $$ = $1; };
-ConversionExpr: Type '(' Expression ')' { $$ = $1; };
+ConversionExpr: Type '(' Expression ')'
+				{
+					if (strcmp($3, "int32") == 0) {
+						printf("I");
+					} else {
+						printf("F");
+					}
+					printf(" to ");
+					if (strcmp($1, "int32") == 0) {
+						printf("I");
+					} else {
+						printf("F");
+					}
+					printf("\n");
+				};
 
 AssignmentStmt: Expression AssignOp Expression
 				{ printf("%s\n", $<operator>2); };
