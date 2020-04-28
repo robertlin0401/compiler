@@ -165,7 +165,9 @@ IncDecStmt
 ;
 
 Block
-	: '{' { create_symbol(); } StatementList '}'	{ dump_symbol(); }
+	: 	'{'	{ create_symbol(); }
+			StatementList
+		'}'	{ dump_symbol(); }
 ;
 
 IfStmt
@@ -212,11 +214,11 @@ MultiplicationOp
 	| '%'	{ $$ = "REM"; }
 ;
 Literal
-	: INT_LIT		{ printf("INT_LIT %d\n", $<i_val>1); }
-	| FLOAT_LIT		{ printf("FLOAT_LIT %.6f\n", $<f_val>1); }
-	| TRUE			{ printf("TRUE\n"); }
-	| FALSE			{ printf("FALSE\n"); }
-	| STRING_LIT	{ printf("STRING_LIT %s\n", $<s_val>1); }
+	: INT_LIT				{ printf("INT_LIT %d\n", $<i_val>1); }
+	| FLOAT_LIT				{ printf("FLOAT_LIT %.6f\n", $<f_val>1); }
+	| TRUE					{ printf("TRUE\n"); }
+	| FALSE					{ printf("FALSE\n"); }
+	| '"' STRING_LIT '"'	{ printf("STRING_LIT %s\n", $<s_val>2); }
 ;
 
 Type
