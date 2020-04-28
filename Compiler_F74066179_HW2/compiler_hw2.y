@@ -74,7 +74,7 @@
 /* Nonterminal with return, which need to sepcify type */
 %type <type> Type TypeName ArrayType
 %type <operator> UnaryOp LogicalOROp LogicalANDOp ComparisonOp AdditionOp MultiplicationOp AssignOp
-%type <type> Expression LogicalORExpr LogicalANDExpr ComparisonExpr AdditionExpr MultiplicationExpr UnaryExpr PrimaryExpr Operand Literal IndexExpr
+%type <type> Expression LogicalORExpr LogicalANDExpr ComparisonExpr AdditionExpr MultiplicationExpr UnaryExpr PrimaryExpr Operand Literal IndexExpr Condition
 
 /* Yacc will start at this nonterminal */
 %start Program
@@ -130,13 +130,53 @@ Expression
 ;
 LogicalORExpr
 	: LogicalANDExpr LogicalOROp LogicalANDExpr
-		{ printf("%s\n", $<operator>2); $$ = "bool"; }
+		{
+			if (strcmp($1, "bool") == 0 && strcmp($3, "bool") == 0) {
+				$$ = "bool";
+			} else {
+				char errorMsg[256] = "";
+				char *operator = $<operator>2;
+				char *type;
+				if (strcmp($1, "bool") != 0) {
+					type = $<type>1;
+				} else {
+					type = $<type>3;
+				}
+				strcat(errorMsg, "invalid operation: (operator ");
+				strcat(errorMsg, operator);
+				strcat(errorMsg, " not defined on ");
+				strcat(errorMsg, type);
+				strcat(errorMsg, ")");
+				yyerror(errorMsg);
+			}
+			printf("%s\n", $<operator>2);
+		}
 	| LogicalANDExpr
 		{ $$ = $1; }
 ;
 LogicalANDExpr
 	: ComparisonExpr LogicalANDOp ComparisonExpr
-		{ printf("%s\n", $<operator>2); $$ = "bool"; }
+		{
+			if (strcmp($1, "bool") == 0 && strcmp($3, "bool") == 0) {
+				$$ = "bool";
+			} else {
+				char errorMsg[256] = "";
+				char *operator = $<operator>2;
+				char *type;
+				if (strcmp($1, "bool") != 0) {
+					type = $<type>1;
+				} else {
+					type = $<type>3;
+				}
+				strcat(errorMsg, "invalid operation: (operator ");
+				strcat(errorMsg, operator);
+				strcat(errorMsg, " not defined on ");
+				strcat(errorMsg, type);
+				strcat(errorMsg, ")");
+				yyerror(errorMsg);
+			}
+			printf("%s\n", $<operator>2);
+		}
 	| ComparisonExpr
 		{ $$ = $1; }
 ;
@@ -148,15 +188,64 @@ ComparisonExpr
 ;
 AdditionExpr
 	: MultiplicationExpr AdditionOp MultiplicationExpr
-		{ $$ = $1; printf("%s\n", $<operator>2); }
+		{
+			if (strcmp($1, $3) == 0) {
+				$$ = $1;
+			} else {
+				char errorMsg[256] = "";
+				char *operator = $<operator>2;
+				char *type1 = $<type>1;
+				char *type2 = $<type>3;
+				strcat(errorMsg, "invalid operation: ");
+				strcat(errorMsg, operator);
+				strcat(errorMsg, " (mismatched types ");
+				strcat(errorMsg, type1);
+				strcat(errorMsg, " and ");
+				strcat(errorMsg, type2);
+				strcat(errorMsg, ")");
+				yyerror(errorMsg);
+			}
+			printf("%s\n", $<operator>2);
+		}
 	| AdditionExpr AdditionOp MultiplicationExpr
-		{ $$ = $1; printf("%s\n", $<operator>2); }
+		{
+			if (strcmp($1, $3) == 0) {
+				$$ = $1;
+			} else {
+				char errorMsg[256] = "";
+				char *operator = $<operator>2;
+				char *type1 = $<type>1;
+				char *type2 = $<type>3;
+				strcat(errorMsg, "invalid operation: ");
+				strcat(errorMsg, operator);
+				strcat(errorMsg, " (mismatched types ");
+				strcat(errorMsg, type1);
+				strcat(errorMsg, " and ");
+				strcat(errorMsg, type2);
+				strcat(errorMsg, ")");
+				yyerror(errorMsg);
+			}
+			printf("%s\n", $<operator>2);
+		}
 	| MultiplicationExpr
 		{ $$ = $1; }
 ;
 MultiplicationExpr
 	: UnaryExpr MultiplicationOp UnaryExpr
-		{ $$ = $1; printf("%s\n", $<operator>2); }
+		{
+			if ((strcmp($1, "float32") == 0 || strcmp($3, "float32") == 0)
+				&& (strcmp($2, "REM") == 0)) {
+				char errorMsg[256] = "";
+				char *operator = $<operator>2;
+				strcat(errorMsg, "invalid operation: (operator ");
+				strcat(errorMsg, operator);
+				strcat(errorMsg, " not defined on float32)");
+				yyerror(errorMsg);
+			} else {
+				$$ = $1;
+			}
+			printf("%s\n", $<operator>2);
+		}
 	| UnaryExpr
 		{ $$ = $1; }
 ;
@@ -194,7 +283,23 @@ ConversionExpr: Type '(' Expression ')'
 				};
 
 AssignmentStmt: Expression AssignOp Expression
-				{ printf("%s\n", $<operator>2); };
+				{
+					if (strcmp($1, $3)!= 0) {
+						char errorMsg[256] = "";
+						char *operator = $<operator>2;
+						char *type1 = $<type>1;
+						char *type2 = $<type>3;
+						strcat(errorMsg, "invalid operation: ");
+						strcat(errorMsg, operator);
+						strcat(errorMsg, " (mismatched types ");
+						strcat(errorMsg, type1);
+						strcat(errorMsg, " and ");
+						strcat(errorMsg, type2);
+						strcat(errorMsg, ")");
+						yyerror(errorMsg);
+					}
+					printf("%s\n", $<operator>2);
+				}
 AssignOp
 	: '='			{ $$ = "ASSIGN"; }
 	| ADD_ASSIGN	{ $$ = "ADD_ASSIGN"; }
@@ -221,11 +326,24 @@ IfStmt
 	| IF Condition Block ELSE Block
 ;
 ForStmt
-	: FOR Condition Block
+	:FOR Condition Block
 	| FOR ForClause Block
 ;
-Condition: Expression;
-ForClause: InitStmt ';' Condition ';' PostStmt;
+Condition
+	: Expression
+		{
+			if (strcmp($1, "bool") != 0) {
+				char errorMsg[256] = "";
+				char *type = $<type>1;
+				strcat(errorMsg, "non-bool (type ");
+				strcat(errorMsg, type);
+				strcat(errorMsg, ") used as for condition");
+				printf("error:%d: %s\n", yylineno+1, errorMsg);
+			}
+		}
+;
+ForClause: InitStmt ';' Condition ';' PostStmt
+;
 InitStmt: SimpleStmt;
 PostStmt: SimpleStmt;
 
