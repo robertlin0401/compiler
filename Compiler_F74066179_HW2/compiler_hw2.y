@@ -19,7 +19,6 @@
 		int length;
 		struct data *head;
 		struct table *prev;
-		struct table *next;
 	};
 	struct data {
 		int index;
@@ -38,6 +37,7 @@
 	int isArray = 0;
     static char *lookup_symbol(char *);
     static void dump_symbol();
+	char *getTypeWithoutLit(char *);
 %}
 
 %error-verbose
@@ -74,7 +74,7 @@
 /* Nonterminal with return, which need to sepcify type */
 %type <type> Type TypeName ArrayType
 %type <operator> UnaryOp LogicalOROp LogicalANDOp ComparisonOp AdditionOp MultiplicationOp AssignOp
-%type <type> Expression LogicalORExpr LogicalANDExpr ComparisonExpr AdditionExpr MultiplicationExpr UnaryExpr PrimaryExpr Operand Literal IndexExpr Condition
+%type <type> Expression LogicalORExpr LogicalANDExpr ComparisonExpr AdditionExpr MultiplicationExpr UnaryExpr PrimaryExpr Operand Literal IndexExpr ConversionExpr Condition
 
 /* Yacc will start at this nonterminal */
 %start Program
@@ -107,19 +107,19 @@ DeclarationStmt
 	: VAR IDENT Type '=' Expression
 		{	
 			if (isArray) {
-				insert_symbol($<id>2, "array", $<type>3);
+				insert_symbol($<id>2, "array", getTypeWithoutLit($<type>3));
 				isArray = 0;
 			} else {
-				insert_symbol($<id>2, $<type>3, "-");
+				insert_symbol($<id>2, getTypeWithoutLit($<type>3), "-");
 			}
 		}
 	| VAR IDENT Type
 		{ 
 			if (isArray) {
-				insert_symbol($<id>2, "array", $<type>3);
+				insert_symbol($<id>2, "array", getTypeWithoutLit($<type>3));
 				isArray = 0;
 			} else {
-				insert_symbol($<id>2, $<type>3, "-");
+				insert_symbol($<id>2, getTypeWithoutLit($<type>3), "-");
 			}
 		}
 ;
@@ -131,16 +131,17 @@ Expression
 LogicalORExpr
 	: LogicalANDExpr LogicalOROp LogicalANDExpr
 		{
-			if (strcmp($1, "bool") == 0 && strcmp($3, "bool") == 0) {
-				$$ = "bool";
+			if (strcmp(getTypeWithoutLit($1), "bool") == 0 &&
+				strcmp(getTypeWithoutLit($3), "bool") == 0) {
+				$$ = "boolLit";
 			} else {
 				char errorMsg[256] = "";
 				char *operator = $<operator>2;
 				char *type;
-				if (strcmp($1, "bool") != 0) {
-					type = $<type>1;
+				if (strcmp(getTypeWithoutLit($1), "bool") != 0) {
+					type = getTypeWithoutLit($<type>1);
 				} else {
-					type = $<type>3;
+					type = getTypeWithoutLit($<type>3);
 				}
 				strcat(errorMsg, "invalid operation: (operator ");
 				strcat(errorMsg, operator);
@@ -157,16 +158,17 @@ LogicalORExpr
 LogicalANDExpr
 	: ComparisonExpr LogicalANDOp ComparisonExpr
 		{
-			if (strcmp($1, "bool") == 0 && strcmp($3, "bool") == 0) {
-				$$ = "bool";
+			if (strcmp(getTypeWithoutLit($1), "bool") == 0 &&
+				strcmp(getTypeWithoutLit($3), "bool") == 0) {
+				$$ = "boolLit";
 			} else {
 				char errorMsg[256] = "";
 				char *operator = $<operator>2;
 				char *type;
-				if (strcmp($1, "bool") != 0) {
-					type = $<type>1;
+				if (strcmp(getTypeWithoutLit($1), "bool") != 0) {
+					type = getTypeWithoutLit($<type>1);
 				} else {
-					type = $<type>3;
+					type = getTypeWithoutLit($<type>3);
 				}
 				strcat(errorMsg, "invalid operation: (operator ");
 				strcat(errorMsg, operator);
@@ -182,20 +184,20 @@ LogicalANDExpr
 ;
 ComparisonExpr
 	: AdditionExpr ComparisonOp AdditionExpr
-		{ printf("%s\n", $<operator>2); $$ = "bool"; }
+		{ printf("%s\n", $<operator>2); $$ = "boolLit"; }
 	| AdditionExpr
 		{ $$ = $1; }
 ;
 AdditionExpr
 	: MultiplicationExpr AdditionOp MultiplicationExpr
 		{
-			if (strcmp($1, $3) == 0) {
+			if (strcmp(getTypeWithoutLit($1), getTypeWithoutLit($3)) == 0) {
 				$$ = $1;
 			} else {
 				char errorMsg[256] = "";
 				char *operator = $<operator>2;
-				char *type1 = $<type>1;
-				char *type2 = $<type>3;
+				char *type1 = getTypeWithoutLit($<type>1);
+				char *type2 = getTypeWithoutLit($<type>3);
 				strcat(errorMsg, "invalid operation: ");
 				strcat(errorMsg, operator);
 				strcat(errorMsg, " (mismatched types ");
@@ -209,13 +211,13 @@ AdditionExpr
 		}
 	| AdditionExpr AdditionOp MultiplicationExpr
 		{
-			if (strcmp($1, $3) == 0) {
+			if (strcmp(getTypeWithoutLit($1), getTypeWithoutLit($3)) == 0) {
 				$$ = $1;
 			} else {
 				char errorMsg[256] = "";
 				char *operator = $<operator>2;
-				char *type1 = $<type>1;
-				char *type2 = $<type>3;
+				char *type1 = getTypeWithoutLit($<type>1);
+				char *type2 = getTypeWithoutLit($<type>3);
 				strcat(errorMsg, "invalid operation: ");
 				strcat(errorMsg, operator);
 				strcat(errorMsg, " (mismatched types ");
@@ -233,7 +235,8 @@ AdditionExpr
 MultiplicationExpr
 	: UnaryExpr MultiplicationOp UnaryExpr
 		{
-			if ((strcmp($1, "float32") == 0 || strcmp($3, "float32") == 0)
+			if ((strcmp(getTypeWithoutLit($1), "float32") == 0 ||
+				 strcmp(getTypeWithoutLit($3), "float32") == 0)
 				&& (strcmp($2, "REM") == 0)) {
 				char errorMsg[256] = "";
 				char *operator = $<operator>2;
@@ -268,13 +271,13 @@ Operand
 IndexExpr: PrimaryExpr '[' Expression ']' { $$ = $1; };
 ConversionExpr: Type '(' Expression ')'
 				{
-					if (strcmp($3, "int32") == 0) {
+					if (strcmp(getTypeWithoutLit($3), "int32") == 0) {
 						printf("I");
 					} else {
 						printf("F");
 					}
 					printf(" to ");
-					if (strcmp($1, "int32") == 0) {
+					if (strcmp(getTypeWithoutLit($1), "int32") == 0) {
 						printf("I");
 					} else {
 						printf("F");
@@ -284,19 +287,31 @@ ConversionExpr: Type '(' Expression ')'
 
 AssignmentStmt: Expression AssignOp Expression
 				{
-					if (strcmp($1, $3)!= 0) {
-						char errorMsg[256] = "";
-						char *operator = $<operator>2;
-						char *type1 = $<type>1;
-						char *type2 = $<type>3;
-						strcat(errorMsg, "invalid operation: ");
-						strcat(errorMsg, operator);
-						strcat(errorMsg, " (mismatched types ");
-						strcat(errorMsg, type1);
-						strcat(errorMsg, " and ");
-						strcat(errorMsg, type2);
-						strcat(errorMsg, ")");
-						yyerror(errorMsg);
+					if ($1 && $3) {
+						if (strcmp($1, "int32Lit") == 0 ||
+							strcmp($1, "float32Lit") == 0 ||
+							strcmp($1, "boolLit") == 0 ||
+							strcmp($1, "stringLit") == 0) {
+							char errorMsg[256] = "";
+							char *type = getTypeWithoutLit($1);
+							strcat(errorMsg, "cannot assign to ");
+							strcat(errorMsg, type);
+							yyerror(errorMsg);
+						} else	if (strcmp(getTypeWithoutLit($1),
+										   getTypeWithoutLit($3)) != 0) {
+							char errorMsg[256] = "";
+							char *operator = $<operator>2;
+							char *type1 = getTypeWithoutLit($<type>1);
+							char *type2 = getTypeWithoutLit($<type>3);
+							strcat(errorMsg, "invalid operation: ");
+							strcat(errorMsg, operator);
+							strcat(errorMsg, " (mismatched types ");
+							strcat(errorMsg, type1);
+							strcat(errorMsg, " and ");
+							strcat(errorMsg, type2);
+							strcat(errorMsg, ")");
+							yyerror(errorMsg);
+						}
 					}
 					printf("%s\n", $<operator>2);
 				}
@@ -332,9 +347,9 @@ ForStmt
 Condition
 	: Expression
 		{
-			if (strcmp($1, "bool") != 0) {
+			if (strcmp(getTypeWithoutLit($1), "bool") != 0) {
 				char errorMsg[256] = "";
-				char *type = $<type>1;
+				char *type = getTypeWithoutLit($<type>1);
 				strcat(errorMsg, "non-bool (type ");
 				strcat(errorMsg, type);
 				strcat(errorMsg, ") used as for condition");
@@ -348,8 +363,10 @@ InitStmt: SimpleStmt;
 PostStmt: SimpleStmt;
 
 PrintStmt
-	: PRINT '(' Expression ')'		{ printf("PRINT %s\n", $<type>3); }
-	| PRINTLN '(' Expression ')'	{ printf("PRINTLN %s\n", $<type>3); }
+	: PRINT '(' Expression ')'
+		{ printf("PRINT %s\n", getTypeWithoutLit($<type>3)); }
+	| PRINTLN '(' Expression ')'
+		{ printf("PRINTLN %s\n", getTypeWithoutLit($<type>3)); }
 ;
 
 UnaryOp
@@ -378,15 +395,15 @@ MultiplicationOp
 ;
 Literal
 	: INT_LIT
-		{ $$ = "int32"; printf("INT_LIT %d\n", $<i_val>1); }
+		{ $$ = "int32Lit"; printf("INT_LIT %d\n", $<i_val>1); }
 	| FLOAT_LIT
-		{ $$ = "float32"; printf("FLOAT_LIT %.6f\n", $<f_val>1); }
+		{ $$ = "float32Lit"; printf("FLOAT_LIT %.6f\n", $<f_val>1); }
 	| TRUE
-		{ $$ = "bool"; printf("TRUE\n"); }
+		{ $$ = "boolLit"; printf("TRUE\n"); }
 	| FALSE
-		{ $$ = "bool"; printf("FALSE\n"); }
+		{ $$ = "boolLit"; printf("FALSE\n"); }
 	| '"' STRING_LIT '"'
-		{ $$ = "string"; printf("STRING_LIT %s\n", $<s_val>2); }
+		{ $$ = "stringLit"; printf("STRING_LIT %s\n", $<s_val>2); }
 ;
 
 Type
@@ -418,7 +435,6 @@ int main(int argc, char *argv[])
 	global->length = 0;
 	global->head = NULL;
 	global->prev = NULL;
-	global->next = NULL;
 	head = global;
 
     yylineno = 0;
@@ -433,16 +449,29 @@ int main(int argc, char *argv[])
 
 static void create_symbol() {
 	struct table *newTable = (struct table *)malloc(sizeof(struct table));
-	head->next = newTable;
 	newTable->scope = ++scope;
 	newTable->length = 0;
 	newTable->head = NULL;
 	newTable->prev = head;
-	newTable->next = NULL;
 	head = newTable;
 }
 
 static void insert_symbol(char *id, char *type, char *elementType) {
+	struct data *checkData = head->head;
+	while (checkData) {
+		if (strcmp(checkData->name, id) == 0) {
+			char lineno[256];
+			sprintf(lineno, "%d", checkData->lineno);
+			char errorMsg[256] = "";
+			strcat(errorMsg, id);
+			strcat(errorMsg, " redeclared in this block. ");
+			strcat(errorMsg, "previous declaration at line ");
+			strcat(errorMsg, lineno);
+			yyerror(errorMsg);
+			return;
+		}
+		checkData = checkData->next;
+	}
 	struct data *newData = (struct data *)malloc(sizeof(struct data));
 	newData->index = head->length;
 	newData->name = id;
@@ -465,8 +494,9 @@ static void insert_symbol(char *id, char *type, char *elementType) {
 
 static char *lookup_symbol(char *id) {
 	struct table *findTable = head;
-	struct data *findData = head->head;
+	struct data *findData;
 	while (findTable) {
+		findData = findTable->head;
 		while (findData) {
 			if (strcmp(findData->name, id) == 0) {
 				printf("IDENT (name=%s, address=%d)\n",
@@ -477,12 +507,17 @@ static char *lookup_symbol(char *id) {
 		}
 		if (!findData) {
 			findTable = findTable->prev;
-			findData = findTable->head;
 		} else {
 			break;
 		}
 	}
-	if (!findData) {}
+	if (!findData) {
+		char errorMsg[256] = "";
+		strcat(errorMsg, "undefined: ");
+		strcat(errorMsg, id);
+		printf("error:%d: %s\n", yylineno+1, errorMsg);
+		return NULL;
+	}
 	if (strcmp(findData->type, "array") == 0) {
 		return findData->elementType;
 	} else {
@@ -508,4 +543,12 @@ static void dump_symbol() {
 	free(head);
 	head = temp;
 	--scope;
+}
+
+char *getTypeWithoutLit(char *target) {
+	if (strcmp(target, "int32Lit") == 0) return "int32";
+	if (strcmp(target, "float32Lit") == 0) return "float32";
+	if (strcmp(target, "boolLit") == 0) return "bool";
+	if (strcmp(target, "stringLit") == 0) return "string";
+	return target;
 }
