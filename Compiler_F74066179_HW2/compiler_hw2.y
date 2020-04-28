@@ -73,6 +73,7 @@
 /* Nonterminal with return, which need to sepcify type */
 %type <type> Type TypeName ArrayType
 %type <operator> UnaryOp LogicalOROp LogicalANDOp ComparisonOp AdditionOp MultiplicationOp
+%type <type> Expression LogicalORExpr LogicalANDExpr
 
 /* Yacc will start at this nonterminal */
 %start Program
@@ -108,16 +109,16 @@ DeclarationStmt
 
 ExpressionStmt: Expression;
 Expression
-	: LogicalORExpr
+	: LogicalORExpr { $$ = $1; }
 ;
 LogicalORExpr
 	: LogicalANDExpr LogicalOROp LogicalANDExpr
-		{ printf("%s\n", $<operator>2); }
+		{ printf("%s\n", $<operator>2); $$ = "bool"; }
 	| LogicalANDExpr
 ;
 LogicalANDExpr
 	: ComparisonExpr LogicalANDOp ComparisonExpr
-		{ printf("%s\n", $<operator>2); }
+		{ printf("%s\n", $<operator>2); $$ = "bool"; }
 	| ComparisonExpr
 ;
 ComparisonExpr
@@ -155,9 +156,8 @@ Operand
 IndexExpr: PrimaryExpr '[' Expression ']';
 ConversionExpr: Type '(' Expression ')';
 
-AssignmentStmt: ;
-/* Expression AssignOp Expression; */
-AssignOp: '=' | '+=' | '-=' | '*=' | '/=' | '%=';
+AssignmentStmt: Expression AssignOp Expression;
+AssignOp: '=' | ADD_ASSIGN | SUB_ASSIGN | MUL_ASSIGN | QUO_ASSIGN | REM_ASSIGN;
 
 IncDecStmt
 	: Expression INC		{ printf("INC\n"); }
@@ -183,8 +183,8 @@ InitStmt: SimpleStmt;
 PostStmt: PostStmt;
 
 PrintStmt
-	: PRINT '(' Expression ')'		{ printf("PRINT\n"); }
-	| PRINTLN '(' Expression ')'	{ printf("PRINTLN\n"); }
+	: PRINT '(' Expression ')'		{ printf("PRINT %s\n", $<type>3); }
+	| PRINTLN '(' Expression ')'	{ printf("PRINTLN %s\n", $<type>3); }
 ;
 
 UnaryOp
@@ -192,15 +192,15 @@ UnaryOp
 	| '-'	{ $$ = "NEG"; }
 	| '!'	{ $$ = "NOT"; }
 ;
-LogicalOROp: '||'	{ $$ = "LOR"; };
-LogicalANDOp: '&&'	{ $$ = "LAND"; };
+LogicalOROp: LOR	{ $$ = "LOR"; };
+LogicalANDOp: LAND	{ $$ = "LAND"; };
 ComparisonOp
-	: '=='	{ $$ = "EQL"; }
-	| '!='	{ $$ = "NEQ"; }
+	: EQL	{ $$ = "EQL"; }
+	| NEQ	{ $$ = "NEQ"; }
 	| '<'	{ $$ = "LSS"; }
-	| '<='	{ $$ = "LEQ"; }
+	| LEQ	{ $$ = "LEQ"; }
 	| '>'	{ $$ = "GTR"; }
-	| '>='	{ $$ = "GEQ"; }
+	| GEQ	{ $$ = "GEQ"; }
 ;
 AdditionOp
 	: '+'	{ $$ = "ADD"; }
