@@ -72,7 +72,7 @@
 
 /* Nonterminal with return, which need to sepcify type */
 %type <type> Type TypeName ArrayType
-%type <operator> UnaryOperator BinaryOperator LogicalOp ComparativeOp ArithmeticOp
+%type <operator> UnaryOp LogicalOROp LogicalANDOp ComparisonOp AdditionOp MultiplicationOp
 
 /* Yacc will start at this nonterminal */
 %start Program
@@ -107,19 +107,45 @@ DeclarationStmt
 ;
 
 ExpressionStmt: Expression;
-Expression: UnaryExpr | BinaryExpr;
-	
-BinaryExpr
-	: Expression BinaryOperator Expression	{ printf("%s\n", $<operator>2); }
+Expression
+	: LogicalORExpr
+;
+LogicalORExpr
+	: LogicalANDExpr LogicalOROp LogicalANDExpr
+		{ printf("%s\n", $<operator>2); }
+	| LogicalANDExpr
+;
+LogicalANDExpr
+	: ComparisonExpr LogicalANDOp ComparisonExpr
+		{ printf("%s\n", $<operator>2); }
+	| ComparisonExpr
+;
+ComparisonExpr
+	: AdditionExpr ComparisonOp AdditionExpr
+		{ printf("%s\n", $<operator>2); }
+	| AdditionExpr
+;
+AdditionExpr
+	: MultiplicationExpr AdditionOp MultiplicationExpr
+		{ printf("%s\n", $<operator>2); }
+	| AdditionExpr AdditionOp MultiplicationExpr
+		{ printf("%s\n", $<operator>2); }
+	| MultiplicationExpr
+;
+MultiplicationExpr
+	: UnaryExpr MultiplicationOp UnaryExpr
+		{ printf("%s\n", $<operator>2); }
+	| UnaryExpr
 ;
 UnaryExpr
-	: UnaryOperator UnaryExpr	{ printf("%s\n", $<operator>1); }
+	: UnaryOp UnaryExpr
+		{ printf("%s\n", $<operator>1); }
 	| PrimaryExpr
 ;
 PrimaryExpr
 	: Operand
-/*	| IndexExpr	*/
-/*	| ConversionExpr	*/
+	| IndexExpr
+	| ConversionExpr
 ;
 Operand
 	: Literal
@@ -157,21 +183,18 @@ InitStmt: SimpleStmt;
 PostStmt: PostStmt;
 
 PrintStmt
-	: PRINT '(' Expression ')'
-	| PRINTLN '(' Expression ')'
+	: PRINT '(' Expression ')'		{ printf("PRINT\n"); }
+	| PRINTLN '(' Expression ')'	{ printf("PRINTLN\n"); }
 ;
 
-UnaryOperator
+UnaryOp
 	: '+'	{ $$ = "POS"; }
 	| '-'	{ $$ = "NEG"; }
 	| '!'	{ $$ = "NOT"; }
 ;
-BinaryOperator: LogicalOp | ComparativeOp | ArithmeticOp;
-LogicalOp
-	: '||'	{ $$ = "LOR"; }
-	| '&&'	{ $$ = "LAND"; }
-;
-ComparativeOp
+LogicalOROp: '||'	{ $$ = "LOR"; };
+LogicalANDOp: '&&'	{ $$ = "LAND"; };
+ComparisonOp
 	: '=='	{ $$ = "EQL"; }
 	| '!='	{ $$ = "NEQ"; }
 	| '<'	{ $$ = "LSS"; }
@@ -179,10 +202,12 @@ ComparativeOp
 	| '>'	{ $$ = "GTR"; }
 	| '>='	{ $$ = "GEQ"; }
 ;
-ArithmeticOp
+AdditionOp
 	: '+'	{ $$ = "ADD"; }
 	| '-'	{ $$ = "SUB"; }
-	| '*'	{ $$ = "MUL"; }
+;
+MultiplicationOp
+	: '*'	{ $$ = "MUL"; }
 	| '/'	{ $$ = "QUO"; }
 	| '%'	{ $$ = "REM"; }
 ;
