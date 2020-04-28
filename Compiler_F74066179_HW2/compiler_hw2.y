@@ -165,7 +165,7 @@ IncDecStmt
 ;
 
 Block
-	: '{' StatementList '}'	{ ; }
+	: '{' { create_symbol(); } StatementList '}'	{ dump_symbol(); }
 ;
 
 IfStmt
@@ -261,6 +261,14 @@ int main(int argc, char *argv[])
 }
 
 static void create_symbol() {
+	struct table *newTable = (struct table *)malloc(sizeof(struct table));
+	head->next = newTable;
+	newTable->scope = ++scope;
+	newTable->length = 0;
+	newTable->head = NULL;
+	newTable->prev = head;
+	newTable->next = NULL;
+	head = newTable;
 }
 
 static void insert_symbol(char *id, char *type, char *elementType) {
@@ -288,7 +296,8 @@ static void lookup_symbol(char *id) {
 	struct data *findData = head->head;
 	while (findData) {
 		if (strcmp(findData->name, id) == 0) {
-			printf("IDENT (name=%s, address=%d)\n", findData->name, findData->address);
+			printf("IDENT (name=%s, address=%d)\n",
+					findData->name, findData->address);
 			break;
 		}
 		findData = findData->next;
@@ -297,16 +306,20 @@ static void lookup_symbol(char *id) {
 
 static void dump_symbol() {
 	struct table *dump = head;
-	for (int i = 0; i < scope; ++i) {
-		dump = dump->next;
-	}
-    printf("> Dump symbol table (scope level: %d)\n", 0);
+    printf("> Dump symbol table (scope level: %d)\n", scope);
     printf("%-10s%-10s%-10s%-10s%-10s%s\n",
            "Index", "Name", "Type", "Address", "Lineno", "Element type");
-	struct data *head = dump->head;
-	while (head) {
+	struct data *target = dump->head;
+	while (target) {
     	printf("%-10d%-10s%-10s%-10d%-10d%s\n",
-        	    head->index, head->name, head->type, head->address, head->lineno, head->elementType);
-		head = head->next;
+        	    target->index, target->name, target->type,
+				target->address, target->lineno, target->elementType);
+		struct data *temp = target->next;
+		free(target);
+		target = temp;
 	}
+	struct table *temp = head->prev;
+	free(head);
+	head = temp;
+	--scope;
 }
