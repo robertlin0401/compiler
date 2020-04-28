@@ -8,3 +8,7 @@
 */y.tab.*
 */y.output
 */myparser
+
+# dev file
+*/test.go
+*/copyAns/*

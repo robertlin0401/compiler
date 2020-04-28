@@ -35,7 +35,8 @@
 	int address = 0;
     static void create_symbol();
     static void insert_symbol(char *, char *, char *);
-    static void lookup_symbol(char *);
+	int isArray = 0;
+    static char *lookup_symbol(char *);
     static void dump_symbol();
 %}
 
@@ -72,8 +73,8 @@
 
 /* Nonterminal with return, which need to sepcify type */
 %type <type> Type TypeName ArrayType
-%type <operator> UnaryOp LogicalOROp LogicalANDOp ComparisonOp AdditionOp MultiplicationOp
-%type <type> Expression LogicalORExpr LogicalANDExpr
+%type <operator> UnaryOp LogicalOROp LogicalANDOp ComparisonOp AdditionOp MultiplicationOp AssignOp
+%type <type> Expression LogicalORExpr LogicalANDExpr ComparisonExpr AdditionExpr MultiplicationExpr UnaryExpr PrimaryExpr Operand Literal IndexExpr ConversionExpr
 
 /* Yacc will start at this nonterminal */
 %start Program
@@ -103,8 +104,24 @@ Statement
 SimpleStmt: ExpressionStmt | AssignmentStmt | IncDecStmt;
 
 DeclarationStmt
-	: VAR IDENT Type '=' Expression	{ insert_symbol($<id>2, $<type>3, "-"); }
-	| VAR IDENT Type				{ insert_symbol($<id>2, $<type>3, "-"); }
+	: VAR IDENT Type '=' Expression
+		{	
+			if (isArray) {
+				insert_symbol($<id>2, "array", $<type>3);
+				isArray = 0;
+			} else {
+				insert_symbol($<id>2, $<type>3, "-");
+			}
+		}
+	| VAR IDENT Type
+		{ 
+			if (isArray) {
+				insert_symbol($<id>2, "array", $<type>3);
+				isArray = 0;
+			} else {
+				insert_symbol($<id>2, $<type>3, "-");
+			}
+		}
 ;
 
 ExpressionStmt: Expression;
@@ -115,49 +132,63 @@ LogicalORExpr
 	: LogicalANDExpr LogicalOROp LogicalANDExpr
 		{ printf("%s\n", $<operator>2); $$ = "bool"; }
 	| LogicalANDExpr
+		{ $$ = $1; }
 ;
 LogicalANDExpr
 	: ComparisonExpr LogicalANDOp ComparisonExpr
 		{ printf("%s\n", $<operator>2); $$ = "bool"; }
 	| ComparisonExpr
+		{ $$ = $1; }
 ;
 ComparisonExpr
 	: AdditionExpr ComparisonOp AdditionExpr
-		{ printf("%s\n", $<operator>2); }
+		{ printf("%s\n", $<operator>2); $$ = "bool"; }
 	| AdditionExpr
+		{ $$ = $1; }
 ;
 AdditionExpr
 	: MultiplicationExpr AdditionOp MultiplicationExpr
-		{ printf("%s\n", $<operator>2); }
+		{ $$ = $1; printf("%s\n", $<operator>2); }
 	| AdditionExpr AdditionOp MultiplicationExpr
-		{ printf("%s\n", $<operator>2); }
+		{ $$ = $1; printf("%s\n", $<operator>2); }
 	| MultiplicationExpr
+		{ $$ = $1; }
 ;
 MultiplicationExpr
 	: UnaryExpr MultiplicationOp UnaryExpr
-		{ printf("%s\n", $<operator>2); }
+		{ $$ = $1; printf("%s\n", $<operator>2); }
 	| UnaryExpr
+		{ $$ = $1; }
 ;
 UnaryExpr
 	: UnaryOp UnaryExpr
-		{ printf("%s\n", $<operator>1); }
+		{ $$ = $2; printf("%s\n", $<operator>1); }
 	| PrimaryExpr
+		{ $$ = $1; }
 ;
 PrimaryExpr
-	: Operand
-	| IndexExpr
-	| ConversionExpr
+	: Operand			{ $$ = $1; }
+	| IndexExpr			{ $$ = $1; }
+	| ConversionExpr	{ $$ = $1; }
 ;
 Operand
-	: Literal
-	| IDENT					{ lookup_symbol($<id>1); }
-	| '(' Expression ')' 
+	: Literal				{ $$ = $1; }
+	| IDENT					{ $$ = lookup_symbol($<id>1); }
+	| '(' Expression ')'	{ $$ = $2; }
 ;
-IndexExpr: PrimaryExpr '[' Expression ']';
-ConversionExpr: Type '(' Expression ')';
+IndexExpr: PrimaryExpr '[' Expression ']' { $$ = $1; };
+ConversionExpr: Type '(' Expression ')' { $$ = $1; };
 
-AssignmentStmt: Expression AssignOp Expression;
-AssignOp: '=' | ADD_ASSIGN | SUB_ASSIGN | MUL_ASSIGN | QUO_ASSIGN | REM_ASSIGN;
+AssignmentStmt: Expression AssignOp Expression
+				{ printf("%s\n", $<operator>2); };
+AssignOp
+	: '='			{ $$ = "ASSIGN"; }
+	| ADD_ASSIGN	{ $$ = "ADD_ASSIGN"; }
+	| SUB_ASSIGN	{ $$ = "SUB_ASSIGN"; }
+	| MUL_ASSIGN	{ $$ = "MUL_ASSIGN"; }
+	| QUO_ASSIGN	{ $$ = "QUO_ASSIGN"; }
+	| REM_ASSIGN	{ $$ = "REM_ASSIGN"; }
+;
 
 IncDecStmt
 	: Expression INC		{ printf("INC\n"); }
@@ -214,16 +245,21 @@ MultiplicationOp
 	| '%'	{ $$ = "REM"; }
 ;
 Literal
-	: INT_LIT				{ printf("INT_LIT %d\n", $<i_val>1); }
-	| FLOAT_LIT				{ printf("FLOAT_LIT %.6f\n", $<f_val>1); }
-	| TRUE					{ printf("TRUE\n"); }
-	| FALSE					{ printf("FALSE\n"); }
-	| '"' STRING_LIT '"'	{ printf("STRING_LIT %s\n", $<s_val>2); }
+	: INT_LIT
+		{ $$ = "int32"; printf("INT_LIT %d\n", $<i_val>1); }
+	| FLOAT_LIT
+		{ $$ = "float32"; printf("FLOAT_LIT %.6f\n", $<f_val>1); }
+	| TRUE
+		{ $$ = "bool"; printf("TRUE\n"); }
+	| FALSE
+		{ $$ = "bool"; printf("FALSE\n"); }
+	| '"' STRING_LIT '"'
+		{ $$ = "string"; printf("STRING_LIT %s\n", $<s_val>2); }
 ;
 
 Type
 	: TypeName	{ $$ = $1; }
-	| ArrayType
+	| ArrayType	{ $$ = $1; }
 ;
 TypeName
 	: INT		{ $$ = "int32"; }
@@ -231,7 +267,8 @@ TypeName
 	| STRING	{ $$ = "string"; }
 	| BOOL		{ $$ = "bool"; }
 ;
-ArrayType: "[" INT_LIT "]" TypeName
+ArrayType: '[' INT_LIT ']' TypeName
+			{ $$ = $4; isArray = 1; printf("INT_LIT %d\n", $<i_val>2); };
 
 %%
 
@@ -294,7 +331,7 @@ static void insert_symbol(char *id, char *type, char *elementType) {
     printf("> Insert {%s} into symbol table (scope level: %d)\n", id, scope);
 }
 
-static void lookup_symbol(char *id) {
+static char *lookup_symbol(char *id) {
 	struct data *findData = head->head;
 	while (findData) {
 		if (strcmp(findData->name, id) == 0) {
@@ -303,6 +340,11 @@ static void lookup_symbol(char *id) {
 			break;
 		}
 		findData = findData->next;
+	}
+	if (strcmp(findData->type, "array") == 0) {
+		return findData->elementType;
+	} else {
+		return findData->type;
 	}
 }
 
