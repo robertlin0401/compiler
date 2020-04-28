@@ -222,12 +222,12 @@ IfStmt
 ;
 ForStmt
 	: FOR Condition Block
-	| FOR  ForClause Block
+	| FOR ForClause Block
 ;
 Condition: Expression;
 ForClause: InitStmt ';' Condition ';' PostStmt;
 InitStmt: SimpleStmt;
-PostStmt: PostStmt;
+PostStmt: SimpleStmt;
 
 PrintStmt
 	: PRINT '(' Expression ')'		{ printf("PRINT %s\n", $<type>3); }
@@ -346,15 +346,25 @@ static void insert_symbol(char *id, char *type, char *elementType) {
 }
 
 static char *lookup_symbol(char *id) {
+	struct table *findTable = head;
 	struct data *findData = head->head;
-	while (findData) {
-		if (strcmp(findData->name, id) == 0) {
-			printf("IDENT (name=%s, address=%d)\n",
-					findData->name, findData->address);
+	while (findTable) {
+		while (findData) {
+			if (strcmp(findData->name, id) == 0) {
+				printf("IDENT (name=%s, address=%d)\n",
+						findData->name, findData->address);
+				break;
+			}
+			findData = findData->next;
+		}
+		if (!findData) {
+			findTable = findTable->prev;
+			findData = findTable->head;
+		} else {
 			break;
 		}
-		findData = findData->next;
 	}
+	if (!findData) {}
 	if (strcmp(findData->type, "array") == 0) {
 		return findData->elementType;
 	} else {
