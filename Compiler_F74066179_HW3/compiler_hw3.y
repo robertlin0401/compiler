@@ -83,7 +83,24 @@
 %%
 
 Program
-    : StatementList
+    : {
+		remove("hw3.j");
+		FILE *file = fopen("hw3.j", "a");
+		fprintf(file, ".source hw3.j\n");
+		fprintf(file, ".class public Main\n");
+		fprintf(file, ".super java/lang/Object\n");
+		fprintf(file, ".method public static main([Ljava/lang/String;)V\n");
+		fprintf(file, ".limit stack 100  ; Define your storage size.\n");
+		fprintf(file, ".limit locals 100 ; Define your local space number.\n");
+		fclose(file);
+	  }
+	  	StatementList
+	  {
+		FILE *file = fopen("hw3.j", "a");
+		fprintf(file, "\treturn\n");
+		fprintf(file, ".end method\n");
+		fclose(file);
+	  }
 ;
 
 StatementList
