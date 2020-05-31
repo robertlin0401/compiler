@@ -36,12 +36,15 @@
 	struct table *head;
 	int scope = 0;
 	int address = 0;
-	char *thisId;
+	int label = 0;
+	char *thisId = NULL;
+	char *thisType = NULL;
     static void create_symbol();
     static void insert_symbol(char *, char *, char *);
 	int isArray = 0;
     static char *lookup_symbol(char *);
 	static void assign_symbol(char *);
+	static char *findType(char *);
     static void dump_symbol();
 	char *getTypeWithoutLit(char *);
 %}
@@ -218,7 +221,67 @@ LogicalANDExpr
 ;
 ComparisonExpr
 	: AdditionExpr ComparisonOp AdditionExpr
-		{ printf("%s\n", $<operator>2); $$ = "boolLit"; }
+		{
+			FILE *file = open();
+			char *type = findType(thisId);
+			if (strcmp($<operator>2, "EQL") == 0) {
+				if (strcmp(type, "int32") == 0) {
+					fprintf(file, "\tisub\n");
+				} else {
+					fprintf(file, "\tfcmpl\n");
+				}
+				fprintf(file, "\tifeq label%d\n", label);
+			}
+			if (strcmp($<operator>2, "NEQ") == 0) {
+				if (strcmp(type, "int32") == 0) {
+					fprintf(file, "\tisub\n");
+				} else {
+					fprintf(file, "\tfcmpl\n");
+				}
+				fprintf(file, "\tifne label%d\n", label);
+			}
+			if (strcmp($<operator>2, "LSS") == 0) {
+				if (strcmp(type, "int32") == 0) {
+					fprintf(file, "\tisub\n");
+				} else {
+					fprintf(file, "\tfcmpl\n");
+				}
+				fprintf(file, "\tiflt label%d\n", label);
+			}
+			if (strcmp($<operator>2, "LEQ") == 0) {
+				if (strcmp(type, "int32") == 0) {
+					fprintf(file, "\tisub\n");
+				} else {
+					fprintf(file, "\tfcmpl\n");
+				}
+				fprintf(file, "\tifle label%d\n", label);
+			}
+			if (strcmp($<operator>2, "GTR") == 0) {
+				if (strcmp(type, "int32") == 0) {
+					fprintf(file, "\tisub\n");
+				} else {
+					fprintf(file, "\tfcmpl\n");
+				}
+				fprintf(file, "\tifgt label%d\n", label);
+			}
+			if (strcmp($<operator>2, "GEQ") == 0) {
+				if (strcmp(type, "int32") == 0) {
+					fprintf(file, "\tisub\n");
+				} else {
+					fprintf(file, "\tfcmpl\n");
+				}
+				fprintf(file, "\tifge label%d\n", label);
+			}
+			fprintf(file, "\ticonst_0\n");
+			fprintf(file, "\tgoto label%d\n", label+1);
+			fprintf(file, "label%d:\n", label++);
+			fprintf(file, "\ticonst_1\n");
+			fprintf(file, "\tgoto label%d\n", label+1);
+			fprintf(file, "label%d:\n", label++);
+			fprintf(file, "label%d:\n", label++);
+			fclose(file);
+			$$ = "boolLit";
+		}
 	| AdditionExpr
 		{ $$ = $1; }
 ;
@@ -332,7 +395,25 @@ MultiplicationExpr
 ;
 UnaryExpr
 	: UnaryOp UnaryExpr
-		{ $$ = $2; printf("%s\n", $<operator>1); }
+		{
+			FILE *file = open();
+			if (strcmp($<operator>1, "POS") == 0) {
+				fprintf(file, "\t \n");
+			}
+			if (strcmp($<operator>1, "NEG") == 0) {
+				if (strcmp(findType(thisId), "int32") == 0) {
+					fprintf(file, "\tineg\n");
+				} else {
+					fprintf(file, "\tfneg\n");
+				}
+			}
+			if (strcmp($<operator>1, "NOT") == 0) {
+				fprintf(file, "\ticonst_1\n");
+				fprintf(file, "\tixor\n");
+			}
+			fclose(file);
+			$$ = $2;
+		}
 	| PrimaryExpr
 		{ $$ = $1; }
 ;
@@ -468,6 +549,14 @@ PrintStmt
 	: PRINT '(' Expression ')'
 		{
 			FILE *file = open();
+			if (strcmp(getTypeWithoutLit($<type>3), "bool") == 0) {
+				fprintf(file, "\tifne label%d\n", label);
+				fprintf(file, "\tldc \"false\"\n");
+				fprintf(file, "\tgoto label%d\n", label+1);
+				fprintf(file, "label%d:\n", label++);
+				fprintf(file, "\tldc \"true\"\n");
+				fprintf(file, "label%d:\n", label++);
+			}
 			fprintf(file, "\tgetstatic java/lang/System/out Ljava/io/PrintStream;\n");
 			fprintf(file, "\tswap\n");
 			fprintf(file, "\tinvokevirtual java/io/PrintStream/print");
@@ -475,7 +564,7 @@ PrintStmt
 				fprintf(file, "(I)V\n");
 			} else if (strcmp(getTypeWithoutLit($<type>3), "float32") == 0) {
 				fprintf(file, "(F)V\n");
-			} else if (strcmp(getTypeWithoutLit($<type>3), "string") == 0) {
+			} else {
 				fprintf(file, "(Ljava/lang/String;)V\n");
 			}
 			fclose(file);
@@ -483,6 +572,14 @@ PrintStmt
 	| PRINTLN '(' Expression ')'
 		{
 			FILE *file = open();
+			if (strcmp(getTypeWithoutLit($<type>3), "bool") == 0) {
+				fprintf(file, "\tifne label%d\n", label);
+				fprintf(file, "\tldc \"false\"\n");
+				fprintf(file, "\tgoto label%d\n", label+1);
+				fprintf(file, "label%d:\n", label++);
+				fprintf(file, "\tldc \"true\"\n");
+				fprintf(file, "label%d:\n", label++);
+			}
 			fprintf(file, "\tgetstatic java/lang/System/out Ljava/io/PrintStream;\n");
 			fprintf(file, "\tswap\n");
 			fprintf(file, "\tinvokevirtual java/io/PrintStream/println");
@@ -490,7 +587,7 @@ PrintStmt
 				fprintf(file, "(I)V\n");
 			} else if (strcmp(getTypeWithoutLit($<type>3), "float32") == 0) {
 				fprintf(file, "(F)V\n");
-			} else if (strcmp(getTypeWithoutLit($<type>3), "string") == 0) {
+			} else {
 				fprintf(file, "(Ljava/lang/String;)V\n");
 			}
 			fclose(file);
@@ -528,13 +625,17 @@ Literal
 			FILE *file = open();
 			fprintf(file, "\tldc %d\n", $<i_val>1);
 			fclose(file);
+			thisId = NULL;
+			thisType = "int32";
 		}
 	| FLOAT_LIT
 		{
 			$$ = "float32Lit";
 			FILE *file = open();
-			fprintf(file, "\tldc %g\n", $<f_val>1);
+			fprintf(file, "\tldc %.6f\n", $<f_val>1);
 			fclose(file);
+			thisId = NULL;
+			thisType = "float32";
 		}
 	| TRUE
 		{
@@ -542,6 +643,8 @@ Literal
 			FILE *file = open();
 			fprintf(file, "\ticonst_1\n");
 			fclose(file);
+			thisId = NULL;
+			thisType = "true";
 		}
 	| FALSE
 		{
@@ -549,6 +652,8 @@ Literal
 			FILE *file = open();
 			fprintf(file, "\ticonst_0\n");
 			fclose(file);
+			thisId = NULL;
+			thisType = "false";
 		}
 	| '"' STRING_LIT '"'
 		{
@@ -556,6 +661,8 @@ Literal
 			FILE *file = open();
 			fprintf(file, "ldc %s\n", $<s_val>2);
 			fclose(file);
+			thisId = NULL;
+			thisType = "string";
 		}
 ;
 
@@ -595,7 +702,7 @@ int main(int argc, char *argv[])
 
 	dump_symbol();
 
-	printf("Total lines: %d\n", yylineno);
+//	printf("Total lines: %d\n", yylineno);
     fclose(yyin);
     return 0;
 }
@@ -642,7 +749,7 @@ static void insert_symbol(char *id, char *type, char *elementType) {
 		while (lastData->next) lastData = lastData->next;
 		lastData->next = newData;
 	}
-    printf("> Insert {%s} into symbol table (scope level: %d)\n", id, scope);
+//    printf("> Insert {%s} into symbol table (scope level: %d)\n", id, scope);
 }
 
 static char *lookup_symbol(char *id) {
@@ -710,16 +817,41 @@ static void assign_symbol(char *id) {
 	}
 }
 
+static char *findType(char *id) {
+	if (!id) return thisType;
+	struct table *findTable = head;
+	struct data *findData;
+	while (findTable) {
+		findData = findTable->head;
+		while (findData) {
+			if (strcmp(findData->name, id) == 0) {
+				break;
+			}
+			findData = findData->next;
+		}
+		if (!findData) {
+			findTable = findTable->prev;
+		} else {
+			break;
+		}
+	}
+	if (strcmp(findData->type, "array") == 0) {
+		return findData->elementType;
+	} else {
+		return findData->type;
+	}
+}
+
 static void dump_symbol() {
 	struct table *dump = head;
-    printf("> Dump symbol table (scope level: %d)\n", scope);
-    printf("%-10s%-10s%-10s%-10s%-10s%s\n",
-           "Index", "Name", "Type", "Address", "Lineno", "Element type");
+//    printf("> Dump symbol table (scope level: %d)\n", scope);
+//    printf("%-10s%-10s%-10s%-10s%-10s%s\n",
+//           "Index", "Name", "Type", "Address", "Lineno", "Element type");
 	struct data *target = dump->head;
 	while (target) {
-    	printf("%-10d%-10s%-10s%-10d%-10d%s\n",
-        	    target->index, target->name, target->type,
-				target->address, target->lineno, target->elementType);
+//    	printf("%-10d%-10s%-10s%-10d%-10d%s\n",
+//        	    target->index, target->name, target->type,
+//				target->address, target->lineno, target->elementType);
 		struct data *temp = target->next;
 		free(target);
 		target = temp;

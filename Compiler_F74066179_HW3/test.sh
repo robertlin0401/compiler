@@ -1,7 +1,8 @@
 make
 
 testList="
-	in01_arithmetic
+	in01_arithmetic 
+	in02_precedence
 "
 
 for test in $testList
