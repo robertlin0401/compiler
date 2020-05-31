@@ -13,6 +13,10 @@
         printf("error:%d: %s\n", yylineno, s);
     }
 
+	FILE *open() {
+		return fopen("hw3.j", "a");
+	}
+
     /* Symbol table function - you can add new function if needed. */
 	struct table {
 		int scope;
@@ -32,10 +36,12 @@
 	struct table *head;
 	int scope = 0;
 	int address = 0;
+	char *thisId;
     static void create_symbol();
     static void insert_symbol(char *, char *, char *);
 	int isArray = 0;
     static char *lookup_symbol(char *);
+	static void assign_symbol(char *);
     static void dump_symbol();
 	char *getTypeWithoutLit(char *);
 %}
@@ -85,7 +91,7 @@
 Program
     : {
 		remove("hw3.j");
-		FILE *file = fopen("hw3.j", "a");
+		FILE *file = open();
 		fprintf(file, ".source hw3.j\n");
 		fprintf(file, ".class public Main\n");
 		fprintf(file, ".super java/lang/Object\n");
@@ -96,7 +102,7 @@ Program
 	  }
 	  	StatementList
 	  {
-		FILE *file = fopen("hw3.j", "a");
+		FILE *file = open();
 		fprintf(file, "\treturn\n");
 		fprintf(file, ".end method\n");
 		fclose(file);
@@ -127,6 +133,13 @@ DeclarationStmt
 				insert_symbol($<id>2, "array", getTypeWithoutLit($<type>3));
 				isArray = 0;
 			} else {
+				FILE *file = open();
+				if (strcmp(getTypeWithoutLit($<type>3), "int32") == 0) {
+					fprintf(file, "\tistore %d\n", address);
+				} else if (strcmp(getTypeWithoutLit($<type>3), "float32") == 0) {
+					fprintf(file, "\tfstore %d\n", address);
+				}
+				fclose(file);
 				insert_symbol($<id>2, getTypeWithoutLit($<type>3), "-");
 			}
 		}
@@ -167,7 +180,9 @@ LogicalORExpr
 				strcat(errorMsg, ")");
 				yyerror(errorMsg);
 			}
-			printf("%s\n", $<operator>2);
+			FILE *file = open();
+			fprintf(file, "\tior\n");
+			fclose(file);
 		}
 	| LogicalANDExpr
 		{ $$ = $1; }
@@ -194,7 +209,9 @@ LogicalANDExpr
 				strcat(errorMsg, ")");
 				yyerror(errorMsg);
 			}
-			printf("%s\n", $<operator>2);
+			FILE *file = open();
+			fprintf(file, "\tiand\n");
+			fclose(file);
 		}
 	| ComparisonExpr
 		{ $$ = $1; }
@@ -224,7 +241,21 @@ AdditionExpr
 				strcat(errorMsg, ")");
 				yyerror(errorMsg);
 			}
-			printf("%s\n", $<operator>2);
+			FILE *file = open();
+			if (strcmp($<operator>2, "ADD") == 0) {
+				if (strcmp(getTypeWithoutLit($<type>3), "int32") == 0) {
+					fprintf(file, "\tiadd\n");
+				} else {
+					fprintf(file, "\tfadd\n");
+				}
+			} else {
+				if (strcmp(getTypeWithoutLit($<type>3), "int32") == 0) {
+					fprintf(file, "\tisub\n");
+				} else {
+					fprintf(file, "\tfsub\n");
+				}
+			}
+			fclose(file);
 		}
 	| AdditionExpr AdditionOp MultiplicationExpr
 		{
@@ -244,7 +275,21 @@ AdditionExpr
 				strcat(errorMsg, ")");
 				yyerror(errorMsg);
 			}
-			printf("%s\n", $<operator>2);
+			FILE *file = open();
+			if (strcmp($<operator>2, "ADD") == 0) {
+				if (strcmp(getTypeWithoutLit($<type>3), "int32") == 0) {
+					fprintf(file, "\tiadd\n");
+				} else {
+					fprintf(file, "\tfadd\n");
+				}
+			} else {
+				if (strcmp(getTypeWithoutLit($<type>3), "int32") == 0) {
+					fprintf(file, "\tisub\n");
+				} else {
+					fprintf(file, "\tfsub\n");
+				}
+			}
+			fclose(file);
 		}
 	| MultiplicationExpr
 		{ $$ = $1; }
@@ -264,7 +309,23 @@ MultiplicationExpr
 			} else {
 				$$ = $1;
 			}
-			printf("%s\n", $<operator>2);
+			FILE *file = open();
+			if (strcmp($<operator>2, "MUL") == 0) {
+				if (strcmp(getTypeWithoutLit($<type>3), "int32") == 0) {
+					fprintf(file, "\timul\n");
+				} else {
+					fprintf(file, "\tfmul\n");
+				}
+			} else if (strcmp($<operator>2, "QUO") == 0) {
+				if (strcmp(getTypeWithoutLit($<type>3), "int32") == 0) {
+					fprintf(file, "\tidiv\n");
+				} else {
+					fprintf(file, "\tfdiv\n");
+				}
+			} else {
+				fprintf(file, "\tirem\n");
+			}
+			fclose(file);
 		}
 	| UnaryExpr
 		{ $$ = $1; }
@@ -342,8 +403,32 @@ AssignOp
 ;
 
 IncDecStmt
-	: Expression INC		{ printf("INC\n"); }
-	| Expression DEC		{ printf("DEC\n"); }
+	: Expression INC
+		{
+			FILE *file = open();
+			if (strcmp(getTypeWithoutLit($<type>1), "int32") == 0) {
+				fprintf(file, "\tldc 1\n");
+				fprintf(file, "\tiadd\n");
+			} else {
+				fprintf(file, "\tldc 1.0\n");
+				fprintf(file, "\tfadd\n");
+			}
+			fclose(file);
+			assign_symbol(thisId);
+		}
+	| Expression DEC
+		{
+			FILE *file = open();
+			if (strcmp(getTypeWithoutLit($<type>1), "int32") == 0) {
+				fprintf(file, "\tldc 1\n");
+				fprintf(file, "\tisub\n");
+			} else {
+				fprintf(file, "\tldc 1.0\n");
+				fprintf(file, "\tfsub\n");
+			}
+			fclose(file);
+			assign_symbol(thisId);
+		}
 ;
 
 Block
@@ -358,7 +443,7 @@ IfStmt
 	| IF Condition Block ELSE Block
 ;
 ForStmt
-	:FOR Condition Block
+	: FOR Condition Block
 	| FOR ForClause Block
 ;
 Condition
@@ -381,9 +466,35 @@ PostStmt: SimpleStmt;
 
 PrintStmt
 	: PRINT '(' Expression ')'
-		{ printf("PRINT %s\n", getTypeWithoutLit($<type>3)); }
+		{
+			FILE *file = open();
+			fprintf(file, "\tgetstatic java/lang/System/out Ljava/io/PrintStream;\n");
+			fprintf(file, "\tswap\n");
+			fprintf(file, "\tinvokevirtual java/io/PrintStream/print");
+			if (strcmp(getTypeWithoutLit($<type>3), "int32") == 0) {
+				fprintf(file, "(I)V\n");
+			} else if (strcmp(getTypeWithoutLit($<type>3), "float32") == 0) {
+				fprintf(file, "(F)V\n");
+			} else if (strcmp(getTypeWithoutLit($<type>3), "string") == 0) {
+				fprintf(file, "(Ljava/lang/String;)V\n");
+			}
+			fclose(file);
+		}
 	| PRINTLN '(' Expression ')'
-		{ printf("PRINTLN %s\n", getTypeWithoutLit($<type>3)); }
+		{
+			FILE *file = open();
+			fprintf(file, "\tgetstatic java/lang/System/out Ljava/io/PrintStream;\n");
+			fprintf(file, "\tswap\n");
+			fprintf(file, "\tinvokevirtual java/io/PrintStream/println");
+			if (strcmp(getTypeWithoutLit($<type>3), "int32") == 0) {
+				fprintf(file, "(I)V\n");
+			} else if (strcmp(getTypeWithoutLit($<type>3), "float32") == 0) {
+				fprintf(file, "(F)V\n");
+			} else if (strcmp(getTypeWithoutLit($<type>3), "string") == 0) {
+				fprintf(file, "(Ljava/lang/String;)V\n");
+			}
+			fclose(file);
+		}
 ;
 
 UnaryOp
@@ -412,15 +523,40 @@ MultiplicationOp
 ;
 Literal
 	: INT_LIT
-		{ $$ = "int32Lit"; printf("INT_LIT %d\n", $<i_val>1); }
+		{
+			$$ = "int32Lit";
+			FILE *file = open();
+			fprintf(file, "\tldc %d\n", $<i_val>1);
+			fclose(file);
+		}
 	| FLOAT_LIT
-		{ $$ = "float32Lit"; printf("FLOAT_LIT %.6f\n", $<f_val>1); }
+		{
+			$$ = "float32Lit";
+			FILE *file = open();
+			fprintf(file, "\tldc %g\n", $<f_val>1);
+			fclose(file);
+		}
 	| TRUE
-		{ $$ = "boolLit"; printf("TRUE\n"); }
+		{
+			$$ = "boolLit";
+			FILE *file = open();
+			fprintf(file, "\ticonst_1\n");
+			fclose(file);
+		}
 	| FALSE
-		{ $$ = "boolLit"; printf("FALSE\n"); }
+		{
+			$$ = "boolLit";
+			FILE *file = open();
+			fprintf(file, "\ticonst_0\n");
+			fclose(file);
+		}
 	| '"' STRING_LIT '"'
-		{ $$ = "stringLit"; printf("STRING_LIT %s\n", $<s_val>2); }
+		{
+			$$ = "stringLit";
+			FILE *file = open();
+			fprintf(file, "ldc %s\n", $<s_val>2);
+			fclose(file);
+		}
 ;
 
 Type
@@ -516,8 +652,13 @@ static char *lookup_symbol(char *id) {
 		findData = findTable->head;
 		while (findData) {
 			if (strcmp(findData->name, id) == 0) {
-				printf("IDENT (name=%s, address=%d)\n",
-						findData->name, findData->address);
+				FILE *file = open();
+				if (strcmp(findData->type, "int32") == 0) {
+					fprintf(file, "\tiload %d\n", findData->address);
+				} else if (strcmp(findData->type, "float32") == 0) {
+					fprintf(file, "\tfload %d\n", findData->address);
+				}
+				fclose(file);
 				break;
 			}
 			findData = findData->next;
@@ -535,10 +676,37 @@ static char *lookup_symbol(char *id) {
 		printf("error:%d: %s\n", yylineno+1, errorMsg);
 		return NULL;
 	}
+	thisId = id;
 	if (strcmp(findData->type, "array") == 0) {
 		return findData->elementType;
 	} else {
 		return findData->type;
+	}
+}
+
+static void assign_symbol(char *id) {
+	struct table *findTable = head;
+	struct data *findData;
+	while (findTable) {
+		findData = findTable->head;
+		while (findData) {
+			if (strcmp(findData->name, id) == 0) {
+				FILE *file = open();
+				if (strcmp(findData->type, "int32") == 0) {
+					fprintf(file, "\tistore %d\n", findData->address);
+				} else if (strcmp(findData->type, "float32") == 0) {
+					fprintf(file, "\tfstore %d\n", findData->address);
+				}
+				fclose(file);
+				break;
+			}
+			findData = findData->next;
+		}
+		if (!findData) {
+			findTable = findTable->prev;
+		} else {
+			break;
+		}
 	}
 }
 

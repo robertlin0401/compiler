@@ -9,8 +9,9 @@
 */y.output
 */myparser
 */*.j
+*/Main.class
 */mycompiler
 
 # dev file
-*/test.*
-*/copyAns/*
+*/test.go
+*/test.j
