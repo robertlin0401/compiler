@@ -139,8 +139,12 @@ DeclarationStmt
 				FILE *file = open();
 				if (strcmp(getTypeWithoutLit($<type>3), "int32") == 0) {
 					fprintf(file, "\tistore %d\n", address);
-				} else if (strcmp(getTypeWithoutLit($<type>3), "float32") == 0) {
+				}
+				if (strcmp(getTypeWithoutLit($<type>3), "float32") == 0) {
 					fprintf(file, "\tfstore %d\n", address);
+				}
+				if (strcmp(getTypeWithoutLit($<type>3), "string") == 0) {
+					fprintf(file, "\tastore %d\n", address);
 				}
 				fclose(file);
 				insert_symbol($<id>2, getTypeWithoutLit($<type>3), "-");
@@ -152,6 +156,20 @@ DeclarationStmt
 				insert_symbol($<id>2, "array", getTypeWithoutLit($<type>3));
 				isArray = 0;
 			} else {
+				FILE *file = open();
+				if (strcmp(getTypeWithoutLit($<type>3), "int32") == 0) {
+					fprintf(file, "\tldc 0\n");
+					fprintf(file, "\tistore %d\n", address);
+				}
+				if (strcmp(getTypeWithoutLit($<type>3), "float32") == 0) {
+					fprintf(file, "\tldc 0.0\n");
+					fprintf(file, "\tfstore %d\n", address);
+				}
+				if (strcmp(getTypeWithoutLit($<type>3), "string") == 0) {
+					fprintf(file, "\tldc \"\"\n");
+					fprintf(file, "\tastore %d\n", address);
+				}
+				fclose(file);
 				insert_symbol($<id>2, getTypeWithoutLit($<type>3), "-");
 			}
 		}
@@ -659,7 +677,7 @@ Literal
 		{
 			$$ = "stringLit";
 			FILE *file = open();
-			fprintf(file, "ldc %s\n", $<s_val>2);
+			fprintf(file, "\tldc \"%s\"\n", $<s_val>2);
 			fclose(file);
 			thisId = NULL;
 			thisType = "string";
@@ -764,6 +782,8 @@ static char *lookup_symbol(char *id) {
 					fprintf(file, "\tiload %d\n", findData->address);
 				} else if (strcmp(findData->type, "float32") == 0) {
 					fprintf(file, "\tfload %d\n", findData->address);
+				} else if (strcmp(findData->type, "string") == 0) {
+					fprintf(file, "\taload %d\n", findData->address);
 				}
 				fclose(file);
 				break;
