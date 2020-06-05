@@ -38,6 +38,7 @@
 	int address = 0;
 	int label = 0;
 	char *thisId = NULL;
+	char *storeId = NULL;
 	char *thisType = NULL;
     static void create_symbol();
     static void insert_symbol(char *, char *, char *);
@@ -132,11 +133,19 @@ SimpleStmt: ExpressionStmt | AssignmentStmt | IncDecStmt;
 DeclarationStmt
 	: VAR IDENT Type '=' Expression
 		{	
+			FILE *file = open();
 			if (isArray) {
+				char *type;
+				if (strcmp(getTypeWithoutLit($<type>3), "int32") == 0) {
+					type = "int";
+				} else {
+					type = "float";
+				}
+				fprintf(file, "\tnewarray %s\n", type);
+				fprintf(file, "\tastore %d\n", address);
 				insert_symbol($<id>2, "array", getTypeWithoutLit($<type>3));
 				isArray = 0;
 			} else {
-				FILE *file = open();
 				if (strcmp(getTypeWithoutLit($<type>3), "int32") == 0) {
 					fprintf(file, "\tistore %d\n", address);
 				}
@@ -146,17 +155,25 @@ DeclarationStmt
 				if (strcmp(getTypeWithoutLit($<type>3), "string") == 0) {
 					fprintf(file, "\tastore %d\n", address);
 				}
-				fclose(file);
 				insert_symbol($<id>2, getTypeWithoutLit($<type>3), "-");
 			}
+			fclose(file);
 		}
 	| VAR IDENT Type
 		{ 
+			FILE *file = open();
 			if (isArray) {
+				char *type;
+				if (strcmp(getTypeWithoutLit($<type>3), "int32") == 0) {
+					type = "int";
+				} else {
+					type = "float";
+				}
+				fprintf(file, "\tnewarray %s\n", type);
+				fprintf(file, "\tastore %d\n", address);
 				insert_symbol($<id>2, "array", getTypeWithoutLit($<type>3));
 				isArray = 0;
 			} else {
-				FILE *file = open();
 				if (strcmp(getTypeWithoutLit($<type>3), "int32") == 0) {
 					fprintf(file, "\tldc 0\n");
 					fprintf(file, "\tistore %d\n", address);
@@ -169,9 +186,9 @@ DeclarationStmt
 					fprintf(file, "\tldc \"\"\n");
 					fprintf(file, "\tastore %d\n", address);
 				}
-				fclose(file);
 				insert_symbol($<id>2, getTypeWithoutLit($<type>3), "-");
 			}
+			fclose(file);
 		}
 ;
 
@@ -445,7 +462,9 @@ Operand
 	| IDENT					{ $$ = lookup_symbol($<id>1); }
 	| '(' Expression ')'	{ $$ = $2; }
 ;
-IndexExpr: PrimaryExpr '[' Expression ']' { $$ = $1; };
+IndexExpr
+	: PrimaryExpr '[' Expression ']'	{ $$ = $1; }
+;
 ConversionExpr: Type '(' Expression ')'
 				{
 					if (strcmp(getTypeWithoutLit($3), "int32") == 0) {
@@ -488,9 +507,10 @@ AssignmentStmt: Expression AssignOp Expression
 							strcat(errorMsg, type2);
 							strcat(errorMsg, ")");
 							yyerror(errorMsg);
+							printf("aaaa");
 						}
 					}
-					printf("%s\n", $<operator>2);
+//					assign_symbol(storeId);
 				}
 AssignOp
 	: '='			{ $$ = "ASSIGN"; }
@@ -694,8 +714,16 @@ TypeName
 	| STRING	{ $$ = "string"; }
 	| BOOL		{ $$ = "bool"; }
 ;
-ArrayType: '[' INT_LIT ']' TypeName
-			{ $$ = $4; isArray = 1; printf("INT_LIT %d\n", $<i_val>2); };
+ArrayType
+	: '[' INT_LIT ']' TypeName
+		{
+			$$ = $4;
+			isArray = 1;
+			FILE *file = open();
+			fprintf(file, "\tldc %d\n", $<i_val>2);
+			fclose(file);
+		}
+;
 
 %%
 
@@ -767,7 +795,6 @@ static void insert_symbol(char *id, char *type, char *elementType) {
 		while (lastData->next) lastData = lastData->next;
 		lastData->next = newData;
 	}
-//    printf("> Insert {%s} into symbol table (scope level: %d)\n", id, scope);
 }
 
 static char *lookup_symbol(char *id) {
@@ -783,6 +810,8 @@ static char *lookup_symbol(char *id) {
 				} else if (strcmp(findData->type, "float32") == 0) {
 					fprintf(file, "\tfload %d\n", findData->address);
 				} else if (strcmp(findData->type, "string") == 0) {
+					fprintf(file, "\taload %d\n", findData->address);
+				} else if (strcmp(findData->type, "array") == 0) {
 					fprintf(file, "\taload %d\n", findData->address);
 				}
 				fclose(file);
@@ -823,6 +852,14 @@ static void assign_symbol(char *id) {
 					fprintf(file, "\tistore %d\n", findData->address);
 				} else if (strcmp(findData->type, "float32") == 0) {
 					fprintf(file, "\tfstore %d\n", findData->address);
+				} else if (strcmp(findData->type, "string") == 0) {
+
+				} else if (strcmp(findData->type, "array") == 0) {
+					//if (strcmp(findData->elementType, "int32") == 0) {
+						fprintf(file, "\t%castore\n", findData->elementType[0]);
+					//} else if (strcmp(findData->elementType, "float32") == 0) {
+					//	fprint
+					//}
 				}
 				fclose(file);
 				break;
@@ -864,14 +901,8 @@ static char *findType(char *id) {
 
 static void dump_symbol() {
 	struct table *dump = head;
-//    printf("> Dump symbol table (scope level: %d)\n", scope);
-//    printf("%-10s%-10s%-10s%-10s%-10s%s\n",
-//           "Index", "Name", "Type", "Address", "Lineno", "Element type");
 	struct data *target = dump->head;
 	while (target) {
-//    	printf("%-10d%-10s%-10s%-10d%-10d%s\n",
-//        	    target->index, target->name, target->type,
-//				target->address, target->lineno, target->elementType);
 		struct data *temp = target->next;
 		free(target);
 		target = temp;
