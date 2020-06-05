@@ -43,6 +43,7 @@
     static void create_symbol();
     static void insert_symbol(char *, char *, char *);
 	int isArray = 0;
+	int isAssign = 1;
     static char *lookup_symbol(char *);
 	static void assign_symbol(char *);
 	static char *findType(char *);
@@ -463,7 +464,14 @@ Operand
 	| '(' Expression ')'	{ $$ = $2; }
 ;
 IndexExpr
-	: PrimaryExpr '[' Expression ']'	{ $$ = $1; }
+	: PrimaryExpr '[' Expression ']'
+		{
+			FILE *file = open();
+			if (!isAssign)
+				fprintf(file, "\t%caload\n", findType(thisId)[0]);
+			fclose(file);
+			$$ = $1;
+		}
 ;
 ConversionExpr: Type '(' Expression ')'
 				{
@@ -481,9 +489,14 @@ ConversionExpr: Type '(' Expression ')'
 					printf("\n");
 				};
 
-AssignmentStmt: Expression AssignOp Expression
+AssignmentStmt:	Expression
 				{
-					if ($1 && $3) {
+					storeId = thisId;
+					isAssign = 0;
+				}
+				AssignOp Expression
+				{
+					if ($1 && $4) {
 						if (strcmp($1, "int32Lit") == 0 ||
 							strcmp($1, "float32Lit") == 0 ||
 							strcmp($1, "boolLit") == 0 ||
@@ -494,11 +507,11 @@ AssignmentStmt: Expression AssignOp Expression
 							strcat(errorMsg, type);
 							yyerror(errorMsg);
 						} else	if (strcmp(getTypeWithoutLit($1),
-										   getTypeWithoutLit($3)) != 0) {
+										   getTypeWithoutLit($4)) != 0) {
 							char errorMsg[256] = "";
-							char *operator = $<operator>2;
+							char *operator = $<operator>3;
 							char *type1 = getTypeWithoutLit($<type>1);
-							char *type2 = getTypeWithoutLit($<type>3);
+							char *type2 = getTypeWithoutLit($<type>4);
 							strcat(errorMsg, "invalid operation: ");
 							strcat(errorMsg, operator);
 							strcat(errorMsg, " (mismatched types ");
@@ -507,10 +520,10 @@ AssignmentStmt: Expression AssignOp Expression
 							strcat(errorMsg, type2);
 							strcat(errorMsg, ")");
 							yyerror(errorMsg);
-							printf("aaaa");
 						}
 					}
-//					assign_symbol(storeId);
+					assign_symbol(storeId);
+					isAssign = 1;
 				}
 AssignOp
 	: '='			{ $$ = "ASSIGN"; }
@@ -584,10 +597,10 @@ InitStmt: SimpleStmt;
 PostStmt: SimpleStmt;
 
 PrintStmt
-	: PRINT '(' Expression ')'
+	: PRINT { isAssign = 0; } '(' Expression ')'
 		{
 			FILE *file = open();
-			if (strcmp(getTypeWithoutLit($<type>3), "bool") == 0) {
+			if (strcmp(getTypeWithoutLit($<type>4), "bool") == 0) {
 				fprintf(file, "\tifne label%d\n", label);
 				fprintf(file, "\tldc \"false\"\n");
 				fprintf(file, "\tgoto label%d\n", label+1);
@@ -598,19 +611,20 @@ PrintStmt
 			fprintf(file, "\tgetstatic java/lang/System/out Ljava/io/PrintStream;\n");
 			fprintf(file, "\tswap\n");
 			fprintf(file, "\tinvokevirtual java/io/PrintStream/print");
-			if (strcmp(getTypeWithoutLit($<type>3), "int32") == 0) {
+			if (strcmp(getTypeWithoutLit($<type>4), "int32") == 0) {
 				fprintf(file, "(I)V\n");
-			} else if (strcmp(getTypeWithoutLit($<type>3), "float32") == 0) {
+			} else if (strcmp(getTypeWithoutLit($<type>4), "float32") == 0) {
 				fprintf(file, "(F)V\n");
 			} else {
 				fprintf(file, "(Ljava/lang/String;)V\n");
 			}
+			isAssign = 1;
 			fclose(file);
 		}
-	| PRINTLN '(' Expression ')'
+	| PRINTLN { isAssign = 0; } '(' Expression ')'
 		{
 			FILE *file = open();
-			if (strcmp(getTypeWithoutLit($<type>3), "bool") == 0) {
+			if (strcmp(getTypeWithoutLit($<type>4), "bool") == 0) {
 				fprintf(file, "\tifne label%d\n", label);
 				fprintf(file, "\tldc \"false\"\n");
 				fprintf(file, "\tgoto label%d\n", label+1);
@@ -621,13 +635,14 @@ PrintStmt
 			fprintf(file, "\tgetstatic java/lang/System/out Ljava/io/PrintStream;\n");
 			fprintf(file, "\tswap\n");
 			fprintf(file, "\tinvokevirtual java/io/PrintStream/println");
-			if (strcmp(getTypeWithoutLit($<type>3), "int32") == 0) {
+			if (strcmp(getTypeWithoutLit($<type>4), "int32") == 0) {
 				fprintf(file, "(I)V\n");
-			} else if (strcmp(getTypeWithoutLit($<type>3), "float32") == 0) {
+			} else if (strcmp(getTypeWithoutLit($<type>4), "float32") == 0) {
 				fprintf(file, "(F)V\n");
 			} else {
 				fprintf(file, "(Ljava/lang/String;)V\n");
 			}
+			isAssign = 1;
 			fclose(file);
 		}
 ;
@@ -663,7 +678,6 @@ Literal
 			FILE *file = open();
 			fprintf(file, "\tldc %d\n", $<i_val>1);
 			fclose(file);
-			thisId = NULL;
 			thisType = "int32";
 		}
 	| FLOAT_LIT
@@ -672,7 +686,6 @@ Literal
 			FILE *file = open();
 			fprintf(file, "\tldc %.6f\n", $<f_val>1);
 			fclose(file);
-			thisId = NULL;
 			thisType = "float32";
 		}
 	| TRUE
@@ -681,7 +694,6 @@ Literal
 			FILE *file = open();
 			fprintf(file, "\ticonst_1\n");
 			fclose(file);
-			thisId = NULL;
 			thisType = "true";
 		}
 	| FALSE
@@ -690,7 +702,6 @@ Literal
 			FILE *file = open();
 			fprintf(file, "\ticonst_0\n");
 			fclose(file);
-			thisId = NULL;
 			thisType = "false";
 		}
 	| '"' STRING_LIT '"'
@@ -699,7 +710,6 @@ Literal
 			FILE *file = open();
 			fprintf(file, "\tldc \"%s\"\n", $<s_val>2);
 			fclose(file);
-			thisId = NULL;
 			thisType = "string";
 		}
 ;
@@ -748,7 +758,6 @@ int main(int argc, char *argv[])
 
 	dump_symbol();
 
-//	printf("Total lines: %d\n", yylineno);
     fclose(yyin);
     return 0;
 }
@@ -855,11 +864,8 @@ static void assign_symbol(char *id) {
 				} else if (strcmp(findData->type, "string") == 0) {
 
 				} else if (strcmp(findData->type, "array") == 0) {
-					//if (strcmp(findData->elementType, "int32") == 0) {
-						fprintf(file, "\t%castore\n", findData->elementType[0]);
-					//} else if (strcmp(findData->elementType, "float32") == 0) {
-					//	fprint
-					//}
+					fprintf(file, "\t%castore\n", findData->elementType[0]);
+					storeId = NULL;
 				}
 				fclose(file);
 				break;
