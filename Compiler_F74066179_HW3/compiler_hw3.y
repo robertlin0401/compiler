@@ -522,6 +522,23 @@ AssignmentStmt:	Expression
 							yyerror(errorMsg);
 						}
 					}
+					FILE *file = open();
+					if (strcmp($<operator>3, "ADD_ASSIGN") == 0) {
+						fprintf(file, "\t%cadd\n", $<type>4[0]);
+					}
+					if (strcmp($<operator>3, "SUB_ASSIGN") == 0) {
+						fprintf(file, "\t%csub\n", $<type>4[0]);
+					}
+					if (strcmp($<operator>3, "MUL_ASSIGN") == 0) {
+						fprintf(file, "\t%cmul\n", $<type>4[0]);
+					}
+					if (strcmp($<operator>3, "QUO_ASSIGN") == 0) {
+						fprintf(file, "\t%cdiv\n", $<type>4[0]);
+					}
+					if (strcmp($<operator>3, "REM_ASSIGN") == 0) {
+						fprintf(file, "\t%crem\n", $<type>4[0]);
+					}
+					fclose(file);
 					assign_symbol(storeId);
 					isAssign = 1;
 				}
@@ -862,7 +879,7 @@ static void assign_symbol(char *id) {
 				} else if (strcmp(findData->type, "float32") == 0) {
 					fprintf(file, "\tfstore %d\n", findData->address);
 				} else if (strcmp(findData->type, "string") == 0) {
-
+					fprintf(file, "\tastore %d\n", findData->address);
 				} else if (strcmp(findData->type, "array") == 0) {
 					fprintf(file, "\t%castore\n", findData->elementType[0]);
 					storeId = NULL;

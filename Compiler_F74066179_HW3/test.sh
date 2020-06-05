@@ -4,7 +4,8 @@ testList="
 	in01_arithmetic 
 	in02_precedence 
 	in03_scope 
-	in04_array
+	in04_array 
+	in05_assignment
 "
 
 for test in $testList
