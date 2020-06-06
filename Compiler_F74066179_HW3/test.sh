@@ -11,6 +11,7 @@ testList="
 	in11_nested_if 
 	in08_for 
 	in12_nested_for
+	in13_monster
 "
 errorTestList="
 	in09_type_error 
