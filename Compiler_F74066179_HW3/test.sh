@@ -9,7 +9,8 @@ testList="
 	in06_conversion 
 	in07_if 
 	in08_for 
-	in11_nested_if
+	in11_nested_if 
+	in12_nested_for
 "
 
 for test in $testList
@@ -17,7 +18,7 @@ do
 	./mycompiler < input/$test.go
 #	cp hw3.j jAns/$test.j
 	java -jar jasmin.jar hw3.j
-	java Main > answer/$test.out
+	java -Xverify:none Main > answer/$test.out
 done
 
 git diff answer/

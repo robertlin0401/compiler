@@ -650,13 +650,7 @@ ForStmt
 			fprintf(file, "label%d:\n", label++);
 			fclose(file);
 		}
-	ForCondition
-		{
-			FILE *file = open();
-			fprintf(file, "\tifeq end%d\n", nest->end);
-			fclose(file);
-		}
-	Block
+	ForCondition Block
 		{
 			FILE *file = open();
 			fprintf(file, "\tgoto label%d\n", nest->label);
@@ -668,7 +662,41 @@ ForStmt
 			nest = temp;
 		}
 ;
-ForCondition: Condition | ForClause;
+ForCondition
+	: Condition
+		{
+			FILE *file = open();
+			fprintf(file, "\tifeq end%d\n", nest->end);
+			fclose(file);
+		}
+	| ForClause
+;
+ForClause
+	: InitStmt ';' 
+		{
+			nest->label = label;
+			FILE *file = open();
+			fprintf(file, "label%d:\n", label++);
+			fclose(file);
+		}
+	Condition ';'
+		{
+			FILE *file = open();
+			fprintf(file, "\tgoto label%d\n", label+1);
+			fprintf(file, "label%d:\n", label);
+			fclose(file);
+		}
+	PostStmt
+		{
+			FILE *file = open();
+			fprintf(file, "\tgoto label%d\n", nest->label);
+			nest->label = label++;
+			fprintf(file, "label%d:\n", label++);
+			fprintf(file, "\tifeq end%d\n", nest->end);
+			fclose(file);
+		}
+;
+InitStmt: SimpleStmt;
 Condition
 	: Expression
 		{
@@ -682,23 +710,6 @@ Condition
 			}
 		}
 ;
-ForClause
-	: FOR InitStmt ';' 
-		{
-			nest->label = label;
-			FILE *file = open();
-			fprintf(file, "end%d:\n", label++);
-			fclose(file);
-		}
-	Condition ';'
-		{
-			FILE *file = open();
-			fprintf(file, "\tifeq end%d\n", nest->end);
-			fclose(file);
-		}
-	PostStmt
-;
-InitStmt: SimpleStmt;
 PostStmt: SimpleStmt;
 
 PrintStmt
