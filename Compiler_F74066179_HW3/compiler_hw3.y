@@ -37,6 +37,7 @@
 	int scope = 0;
 	int address = 0;
 	int label = 0;
+	int endLabel = 0;
 	char *thisId = NULL;
 	char *storeId = NULL;
 	char *thisType = NULL;
@@ -312,8 +313,6 @@ ComparisonExpr
 			fprintf(file, "\tgoto label%d\n", label+1);
 			fprintf(file, "label%d:\n", label++);
 			fprintf(file, "\ticonst_1\n");
-			fprintf(file, "\tgoto label%d\n", label+1);
-			fprintf(file, "label%d:\n", label++);
 			fprintf(file, "label%d:\n", label++);
 			fclose(file);
 			$$ = "boolLit";

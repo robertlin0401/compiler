@@ -43,9 +43,7 @@
 	goto label1
 label0:
 	iconst_1
-	goto label2
 label1:
-label2:
 	iconst_1
 	iconst_1
 	ixor
@@ -56,12 +54,12 @@ label2:
 	ixor
 	iand
 	ior
-	ifne label3
+	ifne label2
 	ldc "false"
-	goto label4
-label3:
+	goto label3
+label2:
 	ldc "true"
-label4:
+label3:
 	getstatic java/lang/System/out Ljava/io/PrintStream;
 	swap
 	invokevirtual java/io/PrintStream/println(Ljava/lang/String;)V
@@ -97,14 +95,12 @@ label4:
 	ldc 4.000000
 	fneg
 	fcmpl
-	ifgt label5
+	ifgt label4
 	iconst_0
-	goto label6
-label5:
+	goto label5
+label4:
 	iconst_1
-	goto label7
-label6:
-label7:
+label5:
 	iconst_1
 	iconst_1
 	ixor
@@ -115,12 +111,12 @@ label7:
 	ixor
 	iand
 	ior
-	ifne label8
+	ifne label6
 	ldc "false"
-	goto label9
-label8:
+	goto label7
+label6:
 	ldc "true"
-label9:
+label7:
 	getstatic java/lang/System/out Ljava/io/PrintStream;
 	swap
 	invokevirtual java/io/PrintStream/print(Ljava/lang/String;)V
