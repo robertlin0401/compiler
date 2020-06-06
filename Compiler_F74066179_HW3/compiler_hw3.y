@@ -638,11 +638,37 @@ BlockElse
 			nest = temp;
 		}
 ;
-
 ForStmt
-	: FOR Condition Block
-	| FOR ForClause Block
+	: FOR
+		{
+			struct nested *newBlock = (struct nested *)malloc(sizeof(struct nested));
+			newBlock->end = endLabel++;
+			newBlock->label = label;
+			newBlock->prev = nest;
+			nest = newBlock;
+			FILE *file = open();
+			fprintf(file, "label%d:\n", label++);
+			fclose(file);
+		}
+	ForCondition
+		{
+			FILE *file = open();
+			fprintf(file, "\tifeq end%d\n", nest->end);
+			fclose(file);
+		}
+	Block
+		{
+			FILE *file = open();
+			fprintf(file, "\tgoto label%d\n", nest->label);
+			fprintf(file, "end%d:\n", nest->end);
+			fclose(file);
+			struct nested *temp = nest->prev;
+			nowEndLabel = temp? temp->end: endLabel;
+			free(nest);
+			nest = temp;
+		}
 ;
+ForCondition: Condition | ForClause;
 Condition
 	: Expression
 		{
@@ -656,7 +682,21 @@ Condition
 			}
 		}
 ;
-ForClause: InitStmt ';' Condition ';' PostStmt
+ForClause
+	: FOR InitStmt ';' 
+		{
+			nest->label = label;
+			FILE *file = open();
+			fprintf(file, "end%d:\n", label++);
+			fclose(file);
+		}
+	Condition ';'
+		{
+			FILE *file = open();
+			fprintf(file, "\tifeq end%d\n", nest->end);
+			fclose(file);
+		}
+	PostStmt
 ;
 InitStmt: SimpleStmt;
 PostStmt: SimpleStmt;

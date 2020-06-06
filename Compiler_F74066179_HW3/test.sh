@@ -8,6 +8,7 @@ testList="
 	in05_assignment 
 	in06_conversion 
 	in07_if 
+	in08_for 
 	in11_nested_if
 "
 
