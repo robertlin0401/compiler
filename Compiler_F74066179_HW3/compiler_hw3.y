@@ -8,8 +8,10 @@
     extern int yylex();
     extern FILE *yyin;
 
+	int yyerr = 0;
     void yyerror (char const *s)
     {
+		++yyerr;
         printf("error:%d: %s\n", yylineno, s);
     }
 
@@ -875,7 +877,10 @@ int main(int argc, char *argv[])
 	dump_symbol();
 
     fclose(yyin);
-    return 0;
+
+	if (yyerr) remove("hw3.j");
+
+	return 0;
 }
 
 static void create_symbol() {
