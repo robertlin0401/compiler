@@ -581,10 +581,39 @@ Block
 ;
 
 IfStmt
-	: IF Condition Block
-	| IF Condition Block ELSE IfStmt
-	| IF Condition Block ELSE Block
+	: IfCondition Block
+		{
+			FILE *file = open();
+			fprintf(file, "label%d:\n", label++);
+			fprintf(file, "end%d:\n", endLabel++);
+			fclose(file);
+		}
+	| IfCondition BlockElse IfStmt
+	| IfCondition BlockElse Block
+		{
+			FILE *file = open();
+			fprintf(file, "end%d:\n", endLabel++);
+			fclose(file);
+		}
 ;
+IfCondition
+	: IF Condition
+		{
+			FILE *file = open();
+			fprintf(file, "\tifeq label%d\n", label);
+			fclose(file);
+		}
+;
+BlockElse
+	: Block ELSE
+		{
+			FILE *file = open();
+			fprintf(file, "\tgoto end%d\n", endLabel);
+			fprintf(file, "label%d:\n", label++);
+			fclose(file);
+		}
+;
+
 ForStmt
 	: FOR Condition Block
 	| FOR ForClause Block

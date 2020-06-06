@@ -6,7 +6,8 @@ testList="
 	in03_scope 
 	in04_array 
 	in05_assignment 
-	in06_conversion
+	in06_conversion 
+	in07_if
 "
 
 for test in $testList
