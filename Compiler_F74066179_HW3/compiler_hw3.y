@@ -33,11 +33,18 @@
 		char *elementType;
 		struct data *next;
 	};
+	struct nested {
+		int label;
+		int end;
+		struct nested *prev;
+	};
 	struct table *head;
+	struct nested *nest;
 	int scope = 0;
 	int address = 0;
 	int label = 0;
 	int endLabel = 0;
+	int nowEndLabel = 0;
 	char *thisId = NULL;
 	char *storeId = NULL;
 	char *thisType = NULL;
@@ -584,23 +591,37 @@ IfStmt
 	: IfCondition Block
 		{
 			FILE *file = open();
-			fprintf(file, "label%d:\n", label++);
-			fprintf(file, "end%d:\n", endLabel++);
+			fprintf(file, "label%d:\n", nest->label);
+			fprintf(file, "end%d:\n", nest->end);
 			fclose(file);
+			struct nested *temp = nest->prev;
+			nowEndLabel = temp? temp->end: endLabel;
+			free(nest);
+			nest = temp;
 		}
 	| IfCondition BlockElse IfStmt
 	| IfCondition BlockElse Block
 		{
 			FILE *file = open();
-			fprintf(file, "end%d:\n", endLabel++);
+			fprintf(file, "end%d:\n", nowEndLabel);
 			fclose(file);
+			nowEndLabel = endLabel;
 		}
 ;
 IfCondition
 	: IF Condition
 		{
+			struct nested *newBlock = (struct nested *)malloc(sizeof(struct nested));
+			if (nest) {
+				newBlock->end = endLabel++;
+			} else {
+				newBlock->end = nowEndLabel;
+			}
+			newBlock->label = label;
+			newBlock->prev = nest;
+			nest = newBlock;
 			FILE *file = open();
-			fprintf(file, "\tifeq label%d\n", label);
+			fprintf(file, "\tifeq label%d\n", label++);
 			fclose(file);
 		}
 ;
@@ -608,9 +629,13 @@ BlockElse
 	: Block ELSE
 		{
 			FILE *file = open();
-			fprintf(file, "\tgoto end%d\n", endLabel);
-			fprintf(file, "label%d:\n", label++);
+			fprintf(file, "\tgoto end%d\n", nest->end);
+			fprintf(file, "label%d:\n", nest->label);
 			fclose(file);
+			struct nested *temp = nest->prev;
+			nowEndLabel = nest->end;
+			free(nest);
+			nest = temp;
 		}
 ;
 

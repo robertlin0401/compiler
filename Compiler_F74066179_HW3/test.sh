@@ -7,7 +7,8 @@ testList="
 	in04_array 
 	in05_assignment 
 	in06_conversion 
-	in07_if
+	in07_if 
+	in11_nested_if
 "
 
 for test in $testList
