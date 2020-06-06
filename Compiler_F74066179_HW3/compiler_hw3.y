@@ -475,18 +475,13 @@ IndexExpr
 ;
 ConversionExpr: Type '(' Expression ')'
 				{
+					FILE *file = open();
 					if (strcmp(getTypeWithoutLit($3), "int32") == 0) {
-						printf("I");
+						fprintf(file, "\ti2f\n");
 					} else {
-						printf("F");
+						fprintf(file, "\tf2i\n");
 					}
-					printf(" to ");
-					if (strcmp(getTypeWithoutLit($1), "int32") == 0) {
-						printf("I");
-					} else {
-						printf("F");
-					}
-					printf("\n");
+					fclose(file);
 				};
 
 AssignmentStmt:	Expression
@@ -837,7 +832,8 @@ static char *lookup_symbol(char *id) {
 					fprintf(file, "\tfload %d\n", findData->address);
 				} else if (strcmp(findData->type, "string") == 0) {
 					fprintf(file, "\taload %d\n", findData->address);
-				} else if (strcmp(findData->type, "array") == 0) {
+				}
+				if (strcmp(findData->type, "array") == 0) {
 					fprintf(file, "\taload %d\n", findData->address);
 				}
 				fclose(file);

@@ -5,12 +5,14 @@ testList="
 	in02_precedence 
 	in03_scope 
 	in04_array 
-	in05_assignment
+	in05_assignment 
+	in06_conversion
 "
 
 for test in $testList
 do
 	./mycompiler < input/$test.go
+#	cp hw3.j jAns/$test.j
 	java -jar jasmin.jar hw3.j
 	java Main > answer/$test.out
 done
