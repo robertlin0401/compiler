@@ -10,10 +10,11 @@ testList="
 	in07_if 
 	in11_nested_if 
 	in08_for 
-	in12_nested_for 
+	in12_nested_for
 "
 errorTestList="
-	in09_type_error
+	in09_type_error 
+	in10_variable_error
 "
 
 for test in $testList

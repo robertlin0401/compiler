@@ -956,6 +956,7 @@ static char *lookup_symbol(char *id) {
 			break;
 		}
 	}
+	thisId = id;
 	if (!findData) {
 		char errorMsg[256] = "";
 		strcat(errorMsg, "undefined: ");
@@ -963,7 +964,6 @@ static char *lookup_symbol(char *id) {
 		printf("error:%d: %s\n", yylineno+1, errorMsg);
 		return NULL;
 	}
-	thisId = id;
 	if (strcmp(findData->type, "array") == 0) {
 		return findData->elementType;
 	} else {
@@ -1020,6 +1020,7 @@ static char *findType(char *id) {
 			break;
 		}
 	}
+	if (!findData) return "-";
 	if (strcmp(findData->type, "array") == 0) {
 		return findData->elementType;
 	} else {
